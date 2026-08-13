@@ -1,0 +1,9 @@
+{
+  "name": "sct-speedcubing-timer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SCT - Speedcubing Timer web app",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

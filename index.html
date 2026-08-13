@@ -1,0 +1,4661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>SCT — Speedcubing Timer & Rubik's Cube Trainer</title>
+<meta name="google-site-verification" content="YhMLGOr4_GLtU_e-xSHFFBkECtSvjcNKG2r3XV-lfgw" />
+<meta name="description" content="A free speedcubing timer with inspection time, session tracking, an algorithm trainer with 3D cube demos, guided lessons, and a bot competition mode — all in your browser.">
+<meta name="keywords" content="cube timer, speedcubing timer, rubik's cube timer, speedcube, cubing practice, cube algorithm trainer">
+<meta property="og:title" content="SCT — Speedcubing Timer & Rubik's Cube Trainer">
+<meta property="og:description" content="A free speedcubing timer with inspection time, session tracking, an algorithm trainer with 3D cube demos, guided lessons, and a bot competition mode.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SCT">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --bg: #0b0d12;
+    --surface: #12151c;
+    --surface-2: #191d27;
+    --border: #262b36;
+    --text: #eef0f3;
+    --muted: #6d7484;
+    --muted-2: #454b58;
+    --white: #f2f3f5;
+    --yellow: #f5c518;
+    --orange: #f2793a;
+    --red: #e0473a;
+    --blue: #3468d1;
+    --green: #3fae5a;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    padding: 28px 20px 40px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .wrap{ width:100%; max-width: 640px; }
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom: 22px;
+    gap: 10px;
+  }
+  .brand{
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .brand b{ color: var(--text); }
+  .header-actions{ display:flex; gap: 8px; align-items:center; }
+  .btn{
+    background:none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .btn:hover{ color: var(--text); border-color: var(--muted-2); }
+  .btn.on{ color: var(--green); border-color: var(--green); }
+
+  .scramble-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 10px;
+    min-height: 46px;
+    margin-bottom: 8px;
+  }
+  #scramble{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-align:center;
+    line-height:1.5;
+  }
+
+  .camera-row{
+    display:flex;
+    justify-content:center;
+    margin-bottom: 14px;
+  }
+  .camera-preview{
+    width: 160px;
+    height: 120px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #000;
+    object-fit: cover;
+    display:none;
+  }
+  .camera-preview.active{ display:block; }
+  .camera-status{
+    font-size: 12px;
+    color: var(--muted-2);
+    text-align:center;
+    margin-top: 6px;
+  }
+  .camera-status.rec{ color: var(--red); font-weight:600; }
+  .rec-dot{
+    display:inline-block;
+    width:8px; height:8px;
+    border-radius:50%;
+    background: var(--red);
+    margin-right: 6px;
+    vertical-align: 1px;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .stage{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 44px 20px 30px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .timer-display{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 84px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height:1;
+    color: var(--text);
+    transition: color 0.15s ease;
+  }
+  .timer-display.charging{ color: var(--muted); }
+  .timer-display.armed{ color: var(--green); }
+  .timer-display.running{ color: var(--blue); }
+
+  .delta{
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    height: 16px;
+  }
+  .delta.pb{ color: var(--green); font-weight:600; }
+
+  .charge-bar{
+    display:flex;
+    gap: 4px;
+    margin-top: 26px;
+    width: 220px;
+  }
+  .seg{
+    flex:1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-2);
+    transition: background-color 0.08s linear, transform 0.15s ease;
+  }
+  .charge-bar.armed .seg{ transform: scaleY(1.6); }
+
+  .hint{
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--muted-2);
+    text-align:center;
+  }
+
+  .stats{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .stat-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align:center;
+  }
+  .stat-label{
+    font-size: 11px;
+    text-transform:uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .stat-value{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .stats-chart-wrap{
+    margin-top: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .stats-chart-title{
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .stats-chart-hint{ color: var(--muted-2); }
+  #statsChart{ width: 100%; height: 140px; display: block; }
+
+  .history{
+    margin-top: 22px;
+  }
+  .history-head{
+    display:flex;
+    justify-content:space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    padding: 0 4px;
+  }
+  .history-list{
+    max-height: 260px;
+    overflow-y: auto;
+    display:flex;
+    flex-direction:column;
+    gap: 5px;
+  }
+  .row{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .row .idx{ color: var(--muted-2); width: 24px; flex-shrink:0; }
+  .row .time{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-weight:600;
+    width: 78px;
+    flex-shrink:0;
+  }
+  .row.dnf .time{ color: var(--red); }
+  .row.plus2 .time{ color: var(--orange); }
+  .row .scr{
+    color: var(--muted);
+    flex:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+  }
+  .row-actions{ display:flex; gap: 4px; flex-shrink:0; }
+  .row-actions button{
+    background:none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    cursor:pointer;
+  }
+  .row-actions button:hover{ color: var(--text); border-color: var(--muted-2); }
+  .row-actions button.active{ color: var(--text); border-color: var(--muted-2); background: var(--surface-2); }
+  .row-actions button.watch{ color: var(--green); border-color: var(--green); }
+  .row-actions button.dlvideo{ color: var(--blue); border-color: var(--blue); }
+  .row-actions button.coach{ color: var(--blue); border-color: var(--blue); }
+
+  .solve-item{ display:flex; flex-direction:column; gap:0; }
+  .feedback-panel{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+  .feedback-panel.loading{ color: var(--muted); font-style: italic; }
+  .feedback-panel.error{ color: var(--red); }
+  .row.has-panel{ border-radius: 8px 8px 0 0; }
+
+  .empty{
+    color: var(--muted-2);
+    font-size: 13px;
+    text-align:center;
+    padding: 20px 0;
+  }
+
+  .backup-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .backup-row .btn.on{ color: var(--green); border-color: var(--green); }
+  .backup-status{
+    font-size: 12px;
+    color: var(--muted-2);
+  }
+
+  .nav-tabs{
+    display:flex;
+    gap: 6px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-tab{
+    background:none;
+    border:none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 4px 10px;
+    margin-right: 14px;
+    cursor:pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .nav-tab:hover{ color: var(--text); }
+  .nav-tab.active{ color: var(--text); border-bottom-color: var(--blue); }
+
+  .cube3d-wrap{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 16px;
+  }
+  #cube3dCanvas{
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 1 / 1;
+    touch-action: none;
+    cursor: grab;
+  }
+  #cube3dCanvas:active{ cursor: grabbing; }
+  #cube3dCanvas canvas{ width:100% !important; height:100% !important; display:block; }
+  .cube3d-hint{
+    font-size: 12px;
+    color: var(--muted-2);
+    margin-top: 10px;
+  }
+
+  .move-grid{
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .move-grid button{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 0;
+    border-radius: 7px;
+    cursor:pointer;
+  }
+  .move-grid button:hover{ border-color: var(--muted-2); background: var(--surface-2); }
+
+  .cube-actions{
+    display:flex;
+    justify-content:center;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .playing-banner{
+    margin-top: 14px;
+    background: var(--surface);
+    border: 1px solid var(--blue);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    text-align:center;
+    color: var(--blue);
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+  }
+
+  .alg-library{ margin-top: 24px; }
+  .alg-category{
+    font-size: 12px;
+    text-transform:uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 18px 0 8px;
+  }
+  .alg-category:first-child{ margin-top: 0; }
+  .alg-card{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+  }
+  .alg-card-info{ min-width:0; }
+  .alg-name{ font-size: 13px; font-weight: 600; }
+  .alg-notation{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .alg-desc{ font-size: 11px; color: var(--muted-2); margin-top: 3px; }
+  .alg-play-btn{
+    background:none;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .alg-play-btn:hover{ background: rgba(63,174,90,0.1); }
+  .alg-play-btn:disabled{ opacity: 0.5; cursor:default; }
+
+  .session-select{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    max-width: 130px;
+  }
+
+  .settings-section{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .settings-title{
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .settings-sub{
+    font-size: 12px;
+    color: var(--muted);
+    margin: 16px 0 8px;
+  }
+  .theme-swatches{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .theme-swatch{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 6px;
+    background:none;
+    border: none;
+    cursor:pointer;
+    padding: 4px;
+    width: 64px;
+  }
+  .theme-swatch .dot{
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+  }
+  .theme-swatch.active .dot{ border-color: var(--text); }
+  .theme-swatch span{ font-size: 11px; color: var(--muted); }
+  .custom-colors{
+    display:flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .custom-colors label{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .custom-colors input[type="color"]{
+    width: 40px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background:none;
+    padding: 0;
+    cursor:pointer;
+  }
+  .session-list{
+    display:flex;
+    flex-direction:column;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .session-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .session-row.current{ border-color: var(--blue); }
+  .session-row .sname{ flex:1; font-weight: 600; }
+  .session-row .scount{ font-size: 11px; color: var(--muted); }
+  .session-row button{
+    background:none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    cursor:pointer;
+  }
+  .session-row button:hover{ color: var(--text); border-color: var(--muted-2); }
+
+  .api-key-note{
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 14px;
+    max-width: 480px;
+  }
+  .api-key-link{ color: var(--blue); }
+  #apiKeyInput{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 13px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .checkbox-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    cursor:pointer;
+  }
+  .checkbox-row input{ width: 16px; height: 16px; cursor:pointer; }
+
+  #voiceSelect{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    max-width: 320px;
+  }
+
+  .course-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+  .course-card-title{ font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .course-card-desc{ font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+  .course-card-meta{ font-size: 11px; color: var(--muted-2); margin-bottom: 10px; }
+
+  .lesson-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom: 14px;
+  }
+  .lesson-progress{ font-size: 12px; color: var(--muted); }
+  .lesson-title{ font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+  .lesson-when{
+    font-size: 13px;
+    color: var(--blue);
+    background: rgba(52,104,209,0.08);
+    border: 1px solid var(--blue);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .lesson-when::before{
+    content: "When to use this: ";
+    font-weight: 700;
+  }
+  .lesson-cube-label{
+    text-align:center;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 8px 0;
+  }
+  .lesson-text{
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .lesson-nav{
+    display:flex;
+    justify-content:space-between;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .sub-nav{
+    display:flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .sub-tab{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor:pointer;
+  }
+  .sub-tab.active{ color: var(--text); border-color: var(--blue); background: rgba(52,104,209,0.1); }
+
+  .lesson-notation{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align:center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+
+  .notation-legend{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    font-size: 13px;
+  }
+  .notation-legend .nl-row{
+    display:flex;
+    gap: 8px;
+    align-items:baseline;
+  }
+  .notation-legend .nl-key{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-weight: 700;
+    color: var(--blue);
+    width: 28px;
+    flex-shrink:0;
+  }
+  .notation-legend .nl-desc{ color: var(--muted); }
+
+  .ref-course-title{
+    font-size: 13px;
+    font-weight: 700;
+    margin: 18px 0 8px;
+  }
+  .ref-course-title:first-child{ margin-top: 0; }
+  .ref-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    margin-bottom: 6px;
+  }
+  .ref-row .ref-name{ font-size: 13px; font-weight: 600; }
+  .ref-row .ref-notation{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .inspection-badge{
+    text-align:center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+  .inspection-badge.warn{ color: var(--orange); border-color: var(--orange); }
+  .inspection-badge.danger{ color: var(--red); border-color: var(--red); }
+  .ready-btn{
+    display:block;
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto 12px;
+    text-align:center;
+    color: var(--green);
+    border-color: var(--green);
+    font-weight: 600;
+  }
+
+  .bot-preview{
+    font-size: 14px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .bot-preview b{ color: var(--blue); }
+  .bot-adjust{
+    display:flex;
+    flex-direction:column;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    max-width: 160px;
+  }
+  .bot-adjust input{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 14px;
+  }
+  .compete-note{
+    font-size: 12px;
+    color: var(--muted-2);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+  .setup-row{
+    display:flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .tour-participant{
+    display:flex;
+    justify-content:space-between;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .tour-participant.ready{ border-color: var(--green); color: var(--green); }
+  .tour-standings{ margin: 14px 0; }
+  .tour-standing-row{
+    display:flex;
+    justify-content:space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-bottom: 6px;
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+  }
+  .tour-waiting{ color: var(--muted-2); font-style: italic; font-family: inherit; }
+  .tour-progress{ text-align:center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .mode-toggle{
+    display:flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .mode-btn{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor:pointer;
+  }
+  .mode-btn.active{ color: var(--text); border-color: var(--blue); background: rgba(52,104,209,0.12); }
+  .leaderboard-list{
+    display:flex;
+    flex-direction:column;
+    gap: 6px;
+  }
+  .lb-row{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .lb-row .lb-place{
+    font-weight: 700;
+    width: 22px;
+    flex-shrink:0;
+    color: var(--muted);
+  }
+  .lb-row.first .lb-place{ color: var(--green); }
+  .lb-row .lb-main{ flex:1; }
+  .lb-row .lb-date{ color: var(--muted-2); font-size: 11px; }
+
+  .round-dots{
+    display:flex;
+    justify-content:center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .round-dots .dot{
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  .round-dots .dot.current{ background: var(--blue); border-color: var(--blue); }
+  .round-dots .dot.done{ background: var(--muted-2); }
+
+  .turn-banner{
+    text-align:center;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .bot-timer{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 44px;
+    font-weight: 700;
+    text-align:center;
+    margin-top: 14px;
+    color: var(--blue);
+  }
+
+  .spectate-prompt{
+    text-align:center;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .spectate-chips{
+    display:flex;
+    justify-content:center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .spectate-chip{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor:pointer;
+  }
+  .spectate-chip:hover{ border-color: var(--muted-2); }
+  .spectate-chip.picked{ border-color: var(--blue); color: var(--blue); }
+  .spectate-chip:disabled{ opacity: 0.5; cursor:default; }
+  .spectate-chip.skip{ color: var(--muted); border-style: dashed; }
+
+  .round-result{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 16px;
+    text-align:center;
+  }
+  .round-result .rr-line{ font-size: 14px; margin-bottom: 4px; }
+  .round-result .rr-line.you{ font-weight: 700; }
+  .round-result .rr-line.first{ color: var(--green); }
+  .round-result .rr-winner{ font-weight: 700; margin-top: 6px; }
+  .round-result .rr-winner.win{ color: var(--green); }
+  .round-result .rr-winner.loss{ color: var(--red); }
+  .round-result .rr-winner.tie{ color: var(--muted); }
+  .round-result button{
+    margin-top: 12px;
+    background: none;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    padding: 8px 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor:pointer;
+  }
+
+  .match-summary{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    text-align:center;
+  }
+  .match-summary .ms-title{ font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+  .match-summary .ms-title.win{ color: var(--green); }
+  .match-summary .ms-title.loss{ color: var(--red); }
+  .match-summary .ms-title.tie{ color: var(--muted); }
+  .match-summary .ms-line{ font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .match-summary button{
+    margin-top: 14px;
+    background: none;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    padding: 9px 18px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor:pointer;
+  }
+
+  .modal-overlay{
+    display:none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items:center;
+    justify-content:center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-box{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    max-width: 90vw;
+  }
+  .modal-box video{
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 8px;
+    display:block;
+  }
+  .modal-box .modal-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top: 10px;
+  }
+  .modal-box .modal-foot span{ font-size:12px; color: var(--muted); }
+
+  .shortcuts-modal-box{ width: 92vw; max-width: 400px; }
+  .shortcuts-list{ display:flex; flex-direction:column; gap: 10px; margin: 14px 0; }
+  .shortcut-row{ display:flex; align-items:center; gap: 12px; font-size: 13px; color: var(--muted); }
+  .shortcut-row .key{
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    flex-shrink:0;
+    min-width: 50px;
+    text-align:center;
+  }
+
+  .scramble-type-row{
+    display:flex;
+    justify-content:center;
+    margin-bottom: 6px;
+  }
+  .scramble-type-select{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+
+  .scramble-mode-row{
+    display:flex;
+    justify-content:center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .scramble-mode-btn{ font-size: 12px; }
+
+  .challenge-banner{
+    background: var(--surface);
+    border: 1px solid var(--blue);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    text-align:center;
+    color: #cfe0ff;
+    margin-bottom: 10px;
+  }
+
+  .scramble-modal-box{
+    width: 92vw;
+    max-width: 420px;
+  }
+  .scramble-modal-title{ font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .scramble-modal-note{ font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
+  .scramble-modal-warning{ font-size: 12px; color: var(--orange); margin: 8px 0; text-align:center; }
+
+  .palette-row{
+    display:flex;
+    justify-content:center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .palette-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 4px;
+  }
+  .palette-swatch{
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    cursor:pointer;
+    padding: 0;
+  }
+  .palette-swatch.selected{ border-color: var(--text); box-shadow: 0 0 0 2px var(--blue); }
+  .palette-swatch.maxed{ opacity: 0.35; cursor:not-allowed; }
+  .palette-count{
+    font-size: 10px;
+    color: var(--muted);
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+  }
+
+  .scramble-net{
+    display:grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    gap: 2px;
+    aspect-ratio: 4 / 3;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+  .net-face{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .net-sticker{
+    border: 1px solid rgba(0,0,0,0.25);
+    border-radius: 2px;
+    cursor:pointer;
+    min-width: 0;
+    min-height: 0;
+  }
+  .net-sticker.locked{ cursor:default; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25); }
+  .net-sticker.empty{ background: var(--surface-2) !important; }
+  .confetti-piece{
+    position: fixed;
+    top: -14px;
+    width: 8px;
+    height: 14px;
+    opacity: 0.95;
+    pointer-events: none;
+    z-index: 3000;
+    border-radius: 1px;
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation-fill-mode: forwards;
+  }
+  @keyframes confetti-fall{
+    0%{ transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    100%{ transform: translate(var(--drift, 0px), 100vh) rotate(var(--spin, 720deg)); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">SCT</div>
+    <div class="header-actions">
+      <select class="session-select" id="sessionSelect"></select>
+      <button class="btn" id="cameraToggle">Enable camera</button>
+      <button class="btn" id="resetSession">Clear history</button>
+      <button class="btn" id="shortcutsBtn" title="Keyboard shortcuts">?</button>
+    </div>
+  </header>
+
+  <div class="backup-row">
+    <button class="btn" id="downloadBackupBtn">Download backup</button>
+    <button class="btn" id="restoreBtn">Restore from file</button>
+    <button class="btn" id="autosaveToggle">Connect a backup file (optional)</button>
+    <input type="file" id="restoreInput" accept="application/json" style="display:none;">
+    <span class="backup-status" id="backupStatus"></span>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tabTimerBtn">Timer</button>
+    <button class="nav-tab" id="tabLearnBtn">Learn algorithms</button>
+    <button class="nav-tab" id="tabSettingsBtn">Settings</button>
+    <button class="nav-tab" id="tabCompeteBtn">Compete</button>
+    <button class="nav-tab" id="tabCoursesBtn">Learn to Solve</button>
+    <button class="nav-tab" id="tabTournamentBtn">Live Tournament</button>
+  </div>
+
+  <div id="timerView">
+  <div class="scramble-type-row">
+    <select class="scramble-type-select" id="scrambleTypeSelect">
+      <option value="full">3x3 — Full scramble</option>
+      <option value="oll">3x3 — OLL practice (Sune / Anti-Sune)</option>
+      <option value="pll">3x3 — PLL practice (T-Perm)</option>
+      <option value="2x2">2x2 — Full scramble</option>
+      <option value="4x4">4x4 — Full scramble</option>
+    </select>
+  </div>
+  <div class="scramble-row">
+    <div id="scramble"></div>
+  </div>
+  <div class="scramble-mode-row">
+    <button class="btn scramble-mode-btn" id="handScrambleBtn">I scrambled it myself</button>
+    <button class="btn scramble-mode-btn" id="viewCustomScrambleBtn" style="display:none;">View my scramble</button>
+    <button class="btn scramble-mode-btn" id="challengeFriendBtn">Challenge a friend</button>
+  </div>
+  <div class="challenge-banner" id="challengeBanner" style="display:none;"></div>
+
+  <div class="inspection-badge" id="inspectionBadge" style="display:none;"></div>
+  <button class="btn ready-btn" id="readyBtn" style="display:none;">Ready — start inspection</button>
+
+  <div class="camera-row" id="cameraRow" style="display:none; flex-direction:column; align-items:center;">
+    <video class="camera-preview" id="cameraPreview" autoplay muted playsinline></video>
+    <div class="camera-status" id="cameraStatus">Camera ready — recording will start with each solve</div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="timer-display" id="display">0.00</div>
+    <div class="delta" id="delta"></div>
+    <div class="charge-bar" id="chargeBar">
+      <div class="seg"></div><div class="seg"></div><div class="seg"></div>
+      <div class="seg"></div><div class="seg"></div><div class="seg"></div>
+    </div>
+    <div class="hint" id="hint">Hold space (or press and hold here) to start</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">Best</div><div class="stat-value" id="statBest">–</div></div>
+    <div class="stat-card"><div class="stat-label">Ao5</div><div class="stat-value" id="statAo5">–</div></div>
+    <div class="stat-card"><div class="stat-label">Ao12</div><div class="stat-value" id="statAo12">–</div></div>
+    <div class="stat-card"><div class="stat-label">Mean</div><div class="stat-value" id="statMean">–</div></div>
+  </div>
+
+  <div class="stats-chart-wrap" id="statsChartWrap" style="display:none;">
+    <div class="stats-chart-title">Progress this session <span class="stats-chart-hint">(dashed line = 5-solve rolling average)</span></div>
+    <svg id="statsChart" viewBox="0 0 600 180" preserveAspectRatio="none"></svg>
+  </div>
+
+  <div class="history">
+    <div class="history-head">
+      <span>History</span>
+      <span id="historyCount">0 solves</span>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="empty">No solves yet — your first one will show up here.</div>
+    </div>
+  </div>
+  </div>
+
+  <div id="learnView" style="display:none;">
+    <div class="cube3d-wrap">
+      <div id="cube3dCanvas"></div>
+      <div class="cube3d-hint">Drag to look around · scroll or pinch to zoom · use the buttons to turn faces</div>
+    </div>
+
+    <div class="move-grid" id="moveGrid"></div>
+
+    <div class="cube-actions">
+      <button class="btn" id="cubeResetBtn">Reset to solved</button>
+      <button class="btn" id="cubeScrambleBtn">Scramble</button>
+    </div>
+
+    <div class="playing-banner" id="playingBanner" style="display:none;"></div>
+
+    <div class="alg-library" id="algLibrary"></div>
+  </div>
+
+  <div id="settingsView" style="display:none;">
+    <div class="settings-section">
+      <div class="settings-title">Color scheme</div>
+      <div class="theme-swatches" id="themeSwatches"></div>
+      <div class="settings-sub">Custom colors</div>
+      <div class="custom-colors" id="customColors">
+        <label>Background<input type="color" id="colorBg"></label>
+        <label>Card<input type="color" id="colorSurface"></label>
+        <label>Text<input type="color" id="colorText"></label>
+        <label>Accent<input type="color" id="colorAccent"></label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">Sessions</div>
+      <div class="session-list" id="sessionList"></div>
+      <button class="btn" id="addSessionBtn">Add new session</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">AI solve coach</div>
+      <div class="api-key-note">The coach button works for free, with no account, out of the box — it uses motion-detection from your recording to give general practice tips, no API calls involved. If you'd like footage-specific feedback from an actual AI reviewing your solve, that requires either a shared server key (see the deployment notes) or your own personal Anthropic API key below — get one at <span class="api-key-link">console.anthropic.com</span>. A personal key is stored only in this browser's local storage and never sent anywhere except Anthropic's API, and usage is billed to whichever account is actually used.</div>
+      <label class="bot-adjust">
+        Anthropic API key
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+      </label>
+      <button class="btn" id="saveApiKeyBtn">Save key</button>
+      <span class="backup-status" id="apiKeyStatus"></span>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">Inspection time</div>
+      <div class="compete-note">Real competitions give you a fixed window to look at the scramble before you start. Turn this on to practice under the same pressure — go over and it's an automatic +2, go over by more than 2 seconds and it's a DNF, just like a real comp. Applies to the Timer tab and to Compete matches.</div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="inspectionEnabledCheckbox">
+        Enable inspection time
+      </label>
+      <label class="bot-adjust">
+        Seconds
+        <input type="number" id="inspectionSecondsInput" min="5" max="60" step="1" value="15">
+      </label>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">Lesson narration voice</div>
+      <div class="compete-note">Lessons in the Learn to Solve tab are read aloud using your browser or device's built-in text-to-speech voices — this isn't a custom AI voice model, just whichever voices your system already has installed, so options vary by device and browser. A more natural-sounding voice is picked automatically when one's available; pick a different one below if you'd like.</div>
+      <label class="bot-adjust">
+        Voice
+        <select id="voiceSelect"><option value="">Loading voices…</option></select>
+      </label>
+      <button class="btn" id="testVoiceBtn">Test voice</button>
+    </div>
+  </div>
+
+  <div id="competeView" style="display:none;">
+    <div class="settings-section">
+      <div class="settings-title">Leaderboard</div>
+      <div class="leaderboard-list" id="leaderboardList"></div>
+    </div>
+
+    <div id="competeSetup">
+      <div class="settings-section">
+        <div class="settings-title">Find an opponent</div>
+        <div class="bot-preview" id="botPreview">Loading…</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="botModeAuto" data-mode="auto">Auto</button>
+          <button class="mode-btn" id="botModeManual" data-mode="manual">Manual</button>
+        </div>
+        <div class="setup-row">
+          <label class="bot-adjust">
+            Bot average (seconds)
+            <input type="number" id="botTargetInput" min="2" max="180" step="0.5" disabled>
+          </label>
+          <label class="bot-adjust">
+            Rounds
+            <input type="number" id="roundsInput" min="1" max="20" step="1" value="5">
+          </label>
+        </div>
+        <button class="btn" id="startMatchBtn">Start match</button>
+        <div class="compete-note">Matches don't count toward your session stats. Lowest average across all rounds wins — with best/worst dropped once you've got at least 3 rounds, just like a real comparison round.</div>
+      </div>
+    </div>
+
+    <div id="competeMatch" style="display:none;">
+      <div class="round-dots" id="roundDots"></div>
+      <div class="turn-banner" id="turnBanner"></div>
+      <div class="scramble-row"><div id="competeScramble"></div></div>
+      <div class="inspection-badge" id="competeInspectionBadge" style="display:none;"></div>
+      <button class="btn ready-btn" id="competeReadyBtn" style="display:none;">Ready — start inspection</button>
+
+      <div id="playerTurnArea" style="display:none;">
+        <div class="stage" id="competeStage">
+          <div class="timer-display" id="competeDisplay">0.00</div>
+          <div class="charge-bar" id="competeChargeBar">
+            <div class="seg"></div><div class="seg"></div><div class="seg"></div>
+            <div class="seg"></div><div class="seg"></div><div class="seg"></div>
+          </div>
+          <div class="hint" id="competeHint">Hold space (or press and hold here) to start</div>
+        </div>
+      </div>
+
+      <div id="botTurnArea" style="display:none;">
+        <div class="spectate-prompt" id="spectatePrompt">Choose who to spectate:</div>
+        <div class="spectate-chips" id="spectateChips"></div>
+        <div class="cube3d-wrap" id="competeCubeWrap" style="display:none;">
+          <div id="competeCubeCanvas"></div>
+        </div>
+        <div class="bot-timer" id="botTimerDisplay" style="display:none;">0.00</div>
+      </div>
+
+      <div class="round-result" id="roundResult" style="display:none;"></div>
+    </div>
+
+    <div class="match-summary" id="matchSummary" style="display:none;"></div>
+  </div>
+</div>
+
+<div id="coursesView" style="display:none;">
+  <div class="sub-nav">
+    <button class="sub-tab active" id="subTabCourses">Courses</button>
+    <button class="sub-tab" id="subTabReference">Notation Reference</button>
+  </div>
+
+  <div id="coursesGroup">
+    <div id="courseListView"></div>
+
+    <div id="lessonView" style="display:none;">
+      <div class="lesson-header">
+        <button class="btn" id="backToCoursesBtn">‹ All courses</button>
+        <span class="lesson-progress" id="lessonProgress"></span>
+      </div>
+      <div class="lesson-title" id="lessonTitle"></div>
+      <div class="lesson-when" id="lessonWhen" style="display:none;"></div>
+      <div class="lesson-text" id="lessonText"></div>
+      <div class="lesson-notation" id="lessonNotation" style="display:none;"></div>
+      <button class="btn" id="playNarrationBtn">🔊 Play narration</button>
+
+      <div class="cube3d-wrap" id="lessonCubeWrapContainer" style="display:none;">
+        <div id="lessonCubeCanvas"></div>
+      </div>
+      <div class="lesson-cube-label" id="lessonCubeLabel" style="display:none;"></div>
+      <button class="btn" id="playDemoBtn" style="display:none;">Solve it</button>
+
+      <div class="lesson-nav">
+        <button class="btn" id="prevLessonBtn">‹ Previous</button>
+        <button class="btn" id="nextLessonBtn">Next ›</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="referenceView" style="display:none;">
+    <div class="settings-section">
+      <div class="settings-title">Reading the notation</div>
+      <div class="notation-legend" id="notationLegend"></div>
+    </div>
+    <div id="refAlgList"></div>
+  </div>
+</div>
+
+<div id="tournamentView" style="display:none;">
+  <div id="tournamentJoinView">
+    <div class="settings-section">
+      <div class="settings-title">Live Tournament</div>
+      <div class="compete-note">Play live against friends in real time — create a room and share the code, or join one someone sent you. Needs the Netlify Functions setup (same as the AI coach feature) to actually work once deployed.</div>
+      <label class="bot-adjust">
+        Your name
+        <input type="text" id="tourNameInput" placeholder="Your name" maxlength="24">
+      </label>
+      <div class="setup-row">
+        <div>
+          <div class="settings-sub">Create a room</div>
+          <label class="bot-adjust">
+            Rounds
+            <input type="number" id="tourRoundsInput" value="5" min="1" max="20">
+          </label>
+          <button class="btn" id="tourCreateBtn">Create tournament</button>
+        </div>
+        <div>
+          <div class="settings-sub">Join a room</div>
+          <label class="bot-adjust">
+            Room code
+            <input type="text" id="tourJoinCodeInput" placeholder="e.g. BLUE42" style="text-transform:uppercase;">
+          </label>
+          <button class="btn" id="tourJoinBtn">Join tournament</button>
+        </div>
+      </div>
+      <div class="scramble-modal-warning" id="tourError" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="tournamentRoomView" style="display:none;">
+    <div class="settings-section">
+      <div class="lesson-header">
+        <span class="lesson-progress">Room <b id="tourRoomCodeLabel"></b></span>
+        <button class="btn" id="tourLeaveBtn">Leave</button>
+      </div>
+      <div id="tourLobbyList"></div>
+      <div class="setup-row" id="tourLobbyActions">
+        <button class="btn" id="tourReadyBtn">I'm ready</button>
+        <button class="btn" id="tourStartRoundBtn" style="display:none;">Start round</button>
+      </div>
+    </div>
+
+    <div id="tourRoundArea" style="display:none;">
+      <div class="round-dots" id="tourRoundDots"></div>
+      <div class="turn-banner" id="tourRoundBanner"></div>
+      <div class="scramble-row"><div id="tourScramble"></div></div>
+
+      <div class="stage" id="tourStage">
+        <div class="timer-display" id="tourDisplay">0.00</div>
+        <div class="charge-bar" id="tourChargeBar">
+          <div class="seg"></div><div class="seg"></div><div class="seg"></div>
+          <div class="seg"></div><div class="seg"></div><div class="seg"></div>
+        </div>
+        <div class="hint" id="tourHint">Hold space (or press and hold here) to start</div>
+      </div>
+
+      <div id="tourLiveStandings" class="tour-standings"></div>
+      <button class="btn" id="tourNextRoundBtn" style="display:none;">Next round</button>
+    </div>
+
+    <div id="tourFinalView" style="display:none;">
+      <div class="match-summary" id="tourFinalSummary"></div>
+      <button class="btn" id="tourBackToLobbyBtn">Back to setup</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <video id="modalVideo" controls autoplay></video>
+    <div class="modal-foot">
+      <span id="modalLabel"></span>
+      <button class="btn" id="modalClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="shortcutsModalOverlay">
+  <div class="modal-box shortcuts-modal-box">
+    <div class="scramble-modal-title">Keyboard shortcuts</div>
+    <div class="shortcuts-list">
+      <div class="shortcut-row"><span class="key">Space</span><span>Hold to arm the timer, release to start, tap to stop (Timer and Compete tabs)</span></div>
+      <div class="shortcut-row"><span class="key">Esc</span><span>Close whichever popup or dialog is currently open</span></div>
+      <div class="shortcut-row"><span class="key">?</span><span>Open this shortcuts list</span></div>
+    </div>
+    <div class="modal-foot">
+      <span></span>
+      <button class="btn" id="shortcutsCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="scrambleModalOverlay">
+  <div class="modal-box scramble-modal-box">
+    <div class="scramble-modal-title" id="scrambleModalTitle">Review your scramble</div>
+    <div class="scramble-modal-note" id="scrambleModalNote">Scramble your physical cube however you like, then tap each square below to match its color. Center squares are locked since they never move on a real cube. Each color can only be used 9 times total, just like a real cube — the count shows under each swatch, and a color greys out once it's used up.</div>
+    <div class="palette-row" id="paletteRow"></div>
+    <div class="scramble-net" id="scrambleNet"></div>
+    <div class="scramble-modal-warning" id="scrambleModalWarning" style="display:none;"></div>
+    <div class="modal-foot">
+      <button class="btn" id="cancelScrambleBtn">Cancel</button>
+      <button class="btn" id="saveScrambleBtn">Save scramble</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+(function(){
+  const FACES = ['U','D','L','R','F','B'];
+  const MODS = ['', "'", '2'];
+
+  function genScramble(len){
+    len = len || 20;
+    const seq = [];
+    let last = null, lastAxis = null;
+    function axisOf(f){ return f==='U'||f==='D' ? 'UD' : (f==='L'||f==='R') ? 'LR' : 'FB'; }
+    while(seq.length < len){
+      const face = FACES[Math.floor(Math.random()*FACES.length)];
+      if(face === last) continue;
+      const axis = axisOf(face);
+      if(axis === lastAxis) continue;
+      const mod = MODS[Math.floor(Math.random()*MODS.length)];
+      seq.push(face+mod);
+      last = face;
+      lastAxis = axis;
+    }
+    return seq.join(' ');
+  }
+
+  // Custom scramble types. OLL/PLL practice scrambles reuse the same verified
+  // algorithms taught elsewhere in the app (Sune, Anti-Sune, T-Perm) rather than
+  // a general-purpose last-layer case generator, so every case produced here is
+  // one we've already confirmed is correct.
+  const SUNE_MOVES = ['R','U',"R'",'U','R','U2',"R'"];
+  const ANTISUNE_MOVES = ['R','U2',"R'","U'",'R',"U'","R'"];
+  const TPERM_MOVES = ['R','U',"R'","U'","R'",'F','R2',"U'","R'","U'",'R','U',"R'",'F'];
+
+  function genOllScramble(){
+    const options = [SUNE_MOVES, ANTISUNE_MOVES];
+    return options[Math.floor(Math.random() * options.length)].join(' ');
+  }
+  function genPllScramble(){
+    return TPERM_MOVES.join(' ');
+  }
+  function gen2x2Scramble(){
+    const faces2 = ['R','U','F'];
+    const seq = [];
+    let last = null;
+    while(seq.length < 10){
+      const f = faces2[Math.floor(Math.random() * faces2.length)];
+      if(f === last) continue;
+      last = f;
+      seq.push(f + MODS[Math.floor(Math.random() * MODS.length)]);
+    }
+    return seq.join(' ');
+  }
+  function gen4x4Scramble(){
+    const seq = [];
+    let last = null;
+    while(seq.length < 40){
+      const f = FACES[Math.floor(Math.random() * FACES.length)];
+      if(f === last) continue;
+      last = f;
+      const wide = Math.random() < 0.5 ? 'w' : '';
+      seq.push(f + wide + MODS[Math.floor(Math.random() * MODS.length)]);
+    }
+    return seq.join(' ');
+  }
+
+  function getScrambleType(){
+    try{ return window.localStorage.getItem('cubeTimerScrambleType') || 'full'; }
+    catch(err){ return 'full'; }
+  }
+  function generateScramble(){
+    switch(getScrambleType()){
+      case 'oll': return genOllScramble();
+      case 'pll': return genPllScramble();
+      case '2x2': return gen2x2Scramble();
+      case '4x4': return gen4x4Scramble();
+      default: return genScramble();
+    }
+  }
+
+  function fmt(ms){
+    if(ms === Infinity) return 'DNF';
+    const totalCs = Math.round(ms/10);
+    const cs = totalCs % 100;
+    const totalSec = Math.floor(totalCs/100);
+    const sec = totalSec % 60;
+    const min = Math.floor(totalSec/60);
+    const csStr = String(cs).padStart(2,'0');
+    if(min > 0) return min + ':' + String(sec).padStart(2,'0') + '.' + csStr;
+    return sec + '.' + csStr;
+  }
+
+  function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
+    const words = text.split(' ');
+    let line = '';
+    let curY = y;
+    let lines = 1;
+    words.forEach(word => {
+      const test = line + word + ' ';
+      if(ctx.measureText(test).width > maxWidth && line !== ''){
+        ctx.fillText(line, x, curY);
+        line = word + ' ';
+        curY += lineHeight;
+        lines++;
+      } else {
+        line = test;
+      }
+    });
+    ctx.fillText(line, x, curY);
+    return lines;
+  }
+
+  function exportSolveCard(t, index, timeLabel){
+    const canvas = document.createElement('canvas');
+    const W = 800, H = 450;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#0b0d12';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#262b36';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(16, 16, W - 32, H - 32);
+
+    ctx.fillStyle = '#6d7484';
+    ctx.font = '700 15px monospace';
+    ctx.fillText('S C T   —   S P E E D C U B I N G   T I M E R', 48, 66);
+
+    ctx.fillStyle = t.penalty === 'DNF' ? '#e0473a' : '#eef0f3';
+    ctx.font = '700 100px monospace';
+    ctx.fillText(timeLabel, 46, 190);
+
+    ctx.fillStyle = '#8b93a1';
+    ctx.font = '400 17px monospace';
+    ctx.fillText('Scramble', 48, 235);
+    ctx.fillStyle = '#6d7484';
+    ctx.font = '400 17px monospace';
+    wrapCanvasText(ctx, t.scramble, 48, 262, W - 96, 24);
+
+    ctx.fillStyle = '#454b58';
+    ctx.font = '400 13px monospace';
+    const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    const sessionName = state.sessions[state.currentSession] ? state.sessions[state.currentSession].name : '';
+    ctx.fillText(dateStr + (sessionName ? '  ·  ' + sessionName : ''), 48, H - 40);
+
+    canvas.toBlob((blob) => {
+      if(!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'solve-' + (index + 1) + '-' + timeLabel.replace(/[^0-9a-zA-Z]/g, '') + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    });
+  }
+
+  function celebrateNewBest(){
+    const colors = ['#f2f3f5', '#f5c518', '#3fae5a', '#3468d1', '#e0473a', '#f2793a'];
+    const count = 40;
+    for(let i = 0; i < count; i++){
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.left = (Math.random() * 100) + 'vw';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.animationDuration = (1.3 + Math.random() * 1.1) + 's';
+      el.style.animationDelay = (Math.random() * 0.25) + 's';
+      el.style.setProperty('--drift', (Math.random() * 120 - 60) + 'px');
+      el.style.setProperty('--spin', (720 + Math.random() * 360) + 'deg');
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+  }
+
+  function effMs(t){
+    if(t.penalty === 'DNF') return Infinity;
+    return t.ms + (t.penalty === '+2' ? 2000 : 0);
+  }
+
+  const state = {
+    times: [],
+    sessions: { 'session-1': { name: 'Session 1', times: [] } },
+    currentSession: 'session-1',
+    scramble: generateScramble(),
+    phase: 'idle',
+    chargeRaf: null,
+    runStart: 0,
+    runRaf: null,
+    cameraStream: null,
+    recorder: null,
+    recordedChunks: [],
+    pendingVideoUrl: null,
+    backupHandle: null,
+    autosaveMode: 'off',
+    autosaveTimer: null,
+    customScrambleGrid: null,
+    challengeBestMs: null
+  };
+  state.times = state.sessions['session-1'].times;
+
+  const displayEl = document.getElementById('display');
+  const deltaEl = document.getElementById('delta');
+  const scrambleEl = document.getElementById('scramble');
+  const hintEl = document.getElementById('hint');
+  const stageEl = document.getElementById('stage');
+  const chargeBarEl = document.getElementById('chargeBar');
+  const segs = Array.from(chargeBarEl.querySelectorAll('.seg'));
+  const segColors = ['#f2f3f5','#f2793a','#3fae5a','#e0473a','#3468d1','#f5c518'];
+  const historyList = document.getElementById('historyList');
+  const historyCount = document.getElementById('historyCount');
+  const statBest = document.getElementById('statBest');
+  const statAo5 = document.getElementById('statAo5');
+  const statAo12 = document.getElementById('statAo12');
+  const statMean = document.getElementById('statMean');
+  const cameraToggle = document.getElementById('cameraToggle');
+  const cameraRow = document.getElementById('cameraRow');
+  const cameraPreview = document.getElementById('cameraPreview');
+  const cameraStatus = document.getElementById('cameraStatus');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalVideo = document.getElementById('modalVideo');
+  const modalLabel = document.getElementById('modalLabel');
+  const modalClose = document.getElementById('modalClose');
+
+  const ARM_MS = 500;
+
+  function renderScramble(){
+    scrambleEl.textContent = state.scramble;
+  }
+  renderScramble();
+
+  const scrambleTypeSelect = document.getElementById('scrambleTypeSelect');
+  scrambleTypeSelect.value = getScrambleType();
+  scrambleTypeSelect.addEventListener('change', () => {
+    try{ window.localStorage.setItem('cubeTimerScrambleType', scrambleTypeSelect.value); }catch(err){}
+    if(state.phase === 'idle'){
+      state.scramble = generateScramble();
+      renderScramble();
+      startInspectionIfEnabled();
+    }
+  });
+
+  // ---- Challenge a friend (async, link-based) ----
+  function generateChallengeLink(){
+    const bestMs = calcBest();
+    const payload = { scramble: state.scramble, bestMs: bestMs };
+    let encoded;
+    try{
+      encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+    }catch(err){
+      return null;
+    }
+    const url = new URL(window.location.href);
+    url.hash = '';
+    url.search = '';
+    url.searchParams.set('challenge', encoded);
+    return url.toString();
+  }
+
+  document.getElementById('challengeFriendBtn').addEventListener('click', async () => {
+    const link = generateChallengeLink();
+    const btn = document.getElementById('challengeFriendBtn');
+    if(!link){
+      btn.textContent = "Couldn't create link";
+      setTimeout(() => { btn.textContent = 'Challenge a friend'; }, 2000);
+      return;
+    }
+    try{
+      await navigator.clipboard.writeText(link);
+      btn.textContent = 'Link copied!';
+    }catch(err){
+      window.prompt('Copy this link to send to a friend:', link);
+    }
+    setTimeout(() => { btn.textContent = 'Challenge a friend'; }, 2000);
+  });
+
+  function showChallengeBanner(bestMs){
+    const banner = document.getElementById('challengeBanner');
+    banner.style.display = '';
+    banner.textContent = bestMs !== null
+      ? "You're on a friend's challenge scramble — beat their time of " + fmt(bestMs) + '!'
+      : "You're on a friend's challenge scramble — solve it and see how you do!";
+  }
+
+  function checkForIncomingChallenge(){
+    try{
+      const params = new URLSearchParams(window.location.search);
+      const encoded = params.get('challenge');
+      if(!encoded) return;
+      const payload = JSON.parse(decodeURIComponent(atob(encoded)));
+      if(payload && payload.scramble){
+        state.scramble = payload.scramble;
+        state.challengeBestMs = (typeof payload.bestMs === 'number') ? payload.bestMs : null;
+        renderScramble();
+        showChallengeBanner(state.challengeBestMs);
+      }
+    }catch(err){
+      /* malformed or tampered challenge link - ignore silently and just use a normal scramble */
+    }
+  }
+  checkForIncomingChallenge();
+
+  function resetSegs(){
+    segs.forEach(s => { s.style.background = 'var(--surface-2)'; });
+    chargeBarEl.classList.remove('armed');
+  }
+
+  async function enableCamera(){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      state.cameraStream = stream;
+      cameraPreview.srcObject = stream;
+      cameraPreview.classList.add('active');
+      cameraRow.style.display = 'flex';
+      cameraToggle.textContent = 'Disable camera';
+      cameraToggle.classList.add('on');
+      cameraStatus.textContent = 'Camera ready — recording will start with each solve';
+      cameraStatus.classList.remove('rec');
+    }catch(err){
+      cameraRow.style.display = 'flex';
+      cameraStatus.textContent = "Couldn't access camera — check your browser's permission settings.";
+    }
+  }
+
+  function disableCamera(){
+    if(state.cameraStream){
+      state.cameraStream.getTracks().forEach(t => t.stop());
+      state.cameraStream = null;
+    }
+    cameraPreview.srcObject = null;
+    cameraPreview.classList.remove('active');
+    cameraRow.style.display = 'none';
+    cameraToggle.textContent = 'Enable camera';
+    cameraToggle.classList.remove('on');
+  }
+
+  cameraToggle.addEventListener('click', () => {
+    if(state.cameraStream) disableCamera();
+    else enableCamera();
+  });
+
+  function pickMimeType(){
+    const candidates = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    for(const c of candidates){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c;
+    }
+    return '';
+  }
+
+  function startRecording(){
+    if(!state.cameraStream) return;
+    state.recordedChunks = [];
+    const mimeType = pickMimeType();
+    try{
+      state.recorder = mimeType
+        ? new MediaRecorder(state.cameraStream, { mimeType })
+        : new MediaRecorder(state.cameraStream);
+    }catch(err){
+      state.recorder = null;
+      return;
+    }
+    state.recorder.ondataavailable = (e) => {
+      if(e.data && e.data.size > 0) state.recordedChunks.push(e.data);
+    };
+    state.recorder.start();
+    cameraStatus.innerHTML = '<span class="rec-dot"></span>Recording — preview hidden until you stop';
+    cameraStatus.classList.add('rec');
+  }
+
+  function stopRecording(){
+    return new Promise((resolve) => {
+      if(!state.recorder || state.recorder.state === 'inactive'){
+        resolve(null);
+        return;
+      }
+      state.recorder.onstop = () => {
+        const mimeType = state.recorder.mimeType || 'video/webm';
+        const blob = new Blob(state.recordedChunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        cameraStatus.textContent = 'Camera ready — recording will start with each solve';
+        cameraStatus.classList.remove('rec');
+        resolve({ url, mimeType });
+      };
+      state.recorder.stop();
+    });
+  }
+
+  function startCharging(){
+    if(state.phase !== 'idle') return;
+    if(inspectionAwaitingReady) return;
+    state.phase = 'charging';
+    displayEl.classList.add('charging');
+    hintEl.textContent = 'Keep holding...';
+    const chargeStart = performance.now();
+    function step(now){
+      const elapsed = now - chargeStart;
+      const pct = Math.min(1, elapsed / ARM_MS);
+      const lit = Math.floor(pct * segs.length);
+      segs.forEach((s, i) => {
+        s.style.background = i < lit ? segColors[i] : 'var(--surface-2)';
+      });
+      if(pct >= 1){
+        state.phase = 'armed';
+        displayEl.classList.remove('charging');
+        displayEl.classList.add('armed');
+        chargeBarEl.classList.add('armed');
+        hintEl.textContent = 'Release to go';
+        return;
+      }
+      state.chargeRaf = requestAnimationFrame(step);
+    }
+    state.chargeRaf = requestAnimationFrame(step);
+  }
+
+  function cancelCharging(){
+    if(state.chargeRaf) cancelAnimationFrame(state.chargeRaf);
+    state.chargeRaf = null;
+    resetSegs();
+    displayEl.classList.remove('charging','armed');
+    if(state.phase === 'charging' || state.phase === 'armed'){
+      state.phase = 'idle';
+      hintEl.textContent = 'Hold space (or press and hold here) to start';
+    }
+  }
+
+  let inspectionRaf = null;
+  let inspectionStartTs = 0;
+  let inspectionPenaltyPending = 'none';
+  let inspectionAwaitingReady = false;
+
+  function beginInspectionCountdown(){
+    const badge = document.getElementById('inspectionBadge');
+    const { seconds } = inspectionSettings();
+    inspectionAwaitingReady = false;
+    document.getElementById('readyBtn').style.display = 'none';
+    badge.style.display = '';
+    inspectionStartTs = performance.now();
+    function tick(){
+      const elapsed = (performance.now() - inspectionStartTs) / 1000;
+      const remaining = seconds - elapsed;
+      if(remaining > 0){
+        badge.textContent = 'Inspection: ' + Math.ceil(remaining) + 's';
+        badge.className = 'inspection-badge';
+      } else if(remaining > -2){
+        badge.textContent = 'Inspection over — +2 if you start now';
+        badge.className = 'inspection-badge warn';
+      } else {
+        badge.textContent = 'Inspection overrun — this solve will be a DNF';
+        badge.className = 'inspection-badge danger';
+      }
+      if(state.phase !== 'running'){
+        inspectionRaf = requestAnimationFrame(tick);
+      }
+    }
+    inspectionRaf = requestAnimationFrame(tick);
+  }
+
+  function startInspectionIfEnabled(){
+    if(inspectionRaf) cancelAnimationFrame(inspectionRaf);
+    inspectionRaf = null;
+    const badge = document.getElementById('inspectionBadge');
+    const readyBtn = document.getElementById('readyBtn');
+    const { enabled } = inspectionSettings();
+    inspectionPenaltyPending = 'none';
+    if(!enabled){
+      inspectionAwaitingReady = false;
+      badge.style.display = 'none';
+      readyBtn.style.display = 'none';
+      return;
+    }
+    inspectionAwaitingReady = true;
+    badge.style.display = 'none';
+    readyBtn.style.display = '';
+    hintEl.textContent = 'Press Ready when you want to start inspecting the scramble';
+  }
+  document.getElementById('readyBtn').addEventListener('click', () => {
+    beginInspectionCountdown();
+    hintEl.textContent = 'Hold space (or press and hold here) to start';
+  });
+
+  function stopInspectionTick(){
+    if(inspectionRaf) cancelAnimationFrame(inspectionRaf);
+    inspectionRaf = null;
+    document.getElementById('inspectionBadge').style.display = 'none';
+  }
+  startInspectionIfEnabled();
+
+  function startRun(){
+    const { enabled, seconds } = inspectionSettings();
+    if(enabled){
+      const elapsed = (performance.now() - inspectionStartTs) / 1000;
+      inspectionPenaltyPending = elapsed > seconds + 2 ? 'DNF' : elapsed > seconds ? '+2' : 'none';
+    } else {
+      inspectionPenaltyPending = 'none';
+    }
+    stopInspectionTick();
+    state.phase = 'running';
+    displayEl.classList.remove('armed');
+    displayEl.classList.add('running');
+    chargeBarEl.classList.remove('armed');
+    resetSegs();
+    hintEl.textContent = 'Press space to stop';
+    deltaEl.textContent = '';
+    if(state.cameraStream){
+      cameraPreview.style.visibility = 'hidden';
+    }
+    startRecording();
+    state.runStart = performance.now();
+    function tick(){
+      const elapsed = performance.now() - state.runStart;
+      displayEl.textContent = fmt(elapsed);
+      state.runRaf = requestAnimationFrame(tick);
+    }
+    state.runRaf = requestAnimationFrame(tick);
+  }
+
+  async function stopRun(){
+    cancelAnimationFrame(state.runRaf);
+    const elapsed = performance.now() - state.runStart;
+    displayEl.classList.remove('running');
+    displayEl.textContent = fmt(elapsed);
+    state.phase = 'idle';
+    hintEl.textContent = 'Hold space (or press and hold here) to start';
+    cameraPreview.style.visibility = '';
+
+    const recording = await stopRecording();
+    const videoUrl = recording ? recording.url : null;
+    const videoMime = recording ? recording.mimeType : null;
+
+    const prevBest = calcBest();
+    state.times.push({ ms: elapsed, penalty: inspectionPenaltyPending, scramble: state.scramble, videoUrl, videoMime, customScrambleGrid: state.customScrambleGrid });
+
+    const newBest = calcBest();
+    if(prevBest !== null && newBest !== null && newBest < prevBest){
+      deltaEl.textContent = 'New best — ' + fmt(prevBest - newBest) + ' faster';
+      deltaEl.classList.add('pb');
+      celebrateNewBest();
+    } else if(prevBest !== null){
+      deltaEl.textContent = '+' + fmt(elapsed - prevBest) + ' off best';
+      deltaEl.classList.remove('pb');
+    } else {
+      deltaEl.classList.remove('pb');
+      deltaEl.textContent = 'First solve logged';
+    }
+
+    state.customScrambleGrid = null;
+    document.getElementById('viewCustomScrambleBtn').style.display = 'none';
+
+    if(state.challengeBestMs !== null){
+      const banner = document.getElementById('challengeBanner');
+      if(elapsed < state.challengeBestMs){
+        banner.textContent = 'You beat your friend by ' + fmt(state.challengeBestMs - elapsed) + '! (' + fmt(elapsed) + ' vs ' + fmt(state.challengeBestMs) + ')';
+        celebrateNewBest();
+      } else {
+        banner.textContent = 'Your friend won this one — they got ' + fmt(state.challengeBestMs) + ', you got ' + fmt(elapsed) + '.';
+      }
+      state.challengeBestMs = null;
+    } else {
+      document.getElementById('challengeBanner').style.display = 'none';
+    }
+
+    state.scramble = generateScramble();
+    renderScramble();
+    startInspectionIfEnabled();
+    renderAll();
+    scheduleAutosave();
+  }
+
+  function calcBest(){
+    const valid = state.times.filter(t => t.penalty !== 'DNF').map(effMs);
+    if(!valid.length) return null;
+    return Math.min(...valid);
+  }
+  function calcMean(){
+    const valid = state.times.filter(t => t.penalty !== 'DNF').map(effMs);
+    if(!valid.length) return null;
+    return valid.reduce((a,b)=>a+b,0) / valid.length;
+  }
+  function calcAo(n){
+    if(state.times.length < n) return null;
+    const set = state.times.slice(-n);
+    const dnfCount = set.filter(t => t.penalty === 'DNF').length;
+    if(dnfCount >= 2) return Infinity;
+    const eff = set.map(effMs).sort((a,b)=>a-b);
+    const trimmed = eff.slice(1, -1);
+    return trimmed.reduce((a,b)=>a+b,0) / trimmed.length;
+  }
+
+  function statText(v){
+    if(v === null) return '–';
+    if(v === Infinity) return 'DNF';
+    return fmt(v);
+  }
+
+  function renderStats(){
+    statBest.textContent = statText(calcBest());
+    statAo5.textContent = statText(calcAo(5));
+    statAo12.textContent = statText(calcAo(12));
+    statMean.textContent = statText(calcMean());
+  }
+
+  function renderStatsChart(){
+    const wrap = document.getElementById('statsChartWrap');
+    const svg = document.getElementById('statsChart');
+    const valid = state.times
+      .map((t, i) => ({ i, ms: effMs(t) }))
+      .filter(p => p.ms !== Infinity);
+    if(valid.length < 2){
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = '';
+
+    const W = 600, H = 180, padL = 42, padR = 10, padT = 10, padB = 10;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const times = valid.map(p => p.ms);
+    const yMin = Math.min(...times), yMax = Math.max(...times);
+    const yRange = (yMax - yMin) || 1;
+    const n = valid.length;
+
+    function xFor(idx){ return padL + (n === 1 ? 0 : (idx / (n - 1)) * plotW); }
+    function yFor(ms){ return padT + (1 - (ms - yMin) / yRange) * plotH; }
+
+    const points = valid.map((p, idx) => [xFor(idx), yFor(p.ms)]);
+    const linePath = points.map((pt, idx) => (idx === 0 ? 'M' : 'L') + pt[0].toFixed(1) + ' ' + pt[1].toFixed(1)).join(' ');
+
+    let avgPath = '';
+    if(n >= 5){
+      const avgPoints = [];
+      for(let idx = 0; idx < n; idx++){
+        const start = Math.max(0, idx - 4);
+        const windowVals = times.slice(start, idx + 1);
+        const avg = windowVals.reduce((a, b) => a + b, 0) / windowVals.length;
+        avgPoints.push([xFor(idx), yFor(avg)]);
+      }
+      avgPath = avgPoints.map((pt, idx) => (idx === 0 ? 'M' : 'L') + pt[0].toFixed(1) + ' ' + pt[1].toFixed(1)).join(' ');
+    }
+
+    const dots = points.map(pt =>
+      '<circle cx="' + pt[0].toFixed(1) + '" cy="' + pt[1].toFixed(1) + '" r="3" fill="var(--blue)" />'
+    ).join('');
+
+    svg.innerHTML =
+      '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (padL + plotW) + '" y2="' + (padT + plotH) + '" stroke="var(--border)" stroke-width="1"/>' +
+      (avgPath ? '<path d="' + avgPath + '" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 3" opacity="0.7"/>' : '') +
+      '<path d="' + linePath + '" fill="none" stroke="var(--blue)" stroke-width="2"/>' +
+      dots +
+      '<text x="' + (padL - 6) + '" y="' + (padT + 4) + '" font-size="9" fill="var(--muted)" text-anchor="end">' + fmt(yMax) + '</text>' +
+      '<text x="' + (padL - 6) + '" y="' + (padT + plotH) + '" font-size="9" fill="var(--muted)" text-anchor="end">' + fmt(yMin) + '</text>';
+  }
+
+  function openVideoModal(url, label){
+    modalVideo.src = url;
+    modalLabel.textContent = label;
+    modalOverlay.classList.add('open');
+  }
+  function closeVideoModal(){
+    modalOverlay.classList.remove('open');
+    modalVideo.pause();
+    modalVideo.src = '';
+  }
+  modalClose.addEventListener('click', closeVideoModal);
+  modalOverlay.addEventListener('click', (e) => {
+    if(e.target === modalOverlay) closeVideoModal();
+  });
+
+  // ---- Keyboard shortcuts overlay ----
+  const shortcutsModalOverlay = document.getElementById('shortcutsModalOverlay');
+  function openShortcutsModal(){ shortcutsModalOverlay.classList.add('open'); }
+  function closeShortcutsModal(){ shortcutsModalOverlay.classList.remove('open'); }
+  document.getElementById('shortcutsBtn').addEventListener('click', openShortcutsModal);
+  document.getElementById('shortcutsCloseBtn').addEventListener('click', closeShortcutsModal);
+  shortcutsModalOverlay.addEventListener('click', (e) => {
+    if(e.target === shortcutsModalOverlay) closeShortcutsModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target && e.target.tagName) || '';
+    const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    if(e.key === '?' && !typing){
+      e.preventDefault();
+      openShortcutsModal();
+      return;
+    }
+    if(e.key === 'Escape'){
+      if(modalOverlay.classList.contains('open')) closeVideoModal();
+      if(document.getElementById('scrambleModalOverlay').classList.contains('open')) closeScrambleModal();
+      if(shortcutsModalOverlay.classList.contains('open')) closeShortcutsModal();
+    }
+  });
+
+  // ---- Hand-scramble input (color net) ----
+  const PALETTE = [
+    { id: 'white', hex: '#f2f3f5' },
+    { id: 'yellow', hex: '#f5c518' },
+    { id: 'green', hex: '#3fae5a' },
+    { id: 'blue', hex: '#3468d1' },
+    { id: 'red', hex: '#e0473a' },
+    { id: 'orange', hex: '#f2793a' }
+  ];
+  const PALETTE_HEX = {};
+  PALETTE.forEach(p => { PALETTE_HEX[p.id] = p.hex; });
+  const FACE_CENTER_COLOR = { U: 'white', D: 'yellow', F: 'green', B: 'blue', R: 'red', L: 'orange' };
+  const FACE_LAYOUT = { U: {col:4,row:1}, L: {col:1,row:4}, F: {col:4,row:4}, R: {col:7,row:4}, B: {col:10,row:4}, D: {col:4,row:7} };
+
+  let currentPaintColor = null;
+  let scrambleNetState = null;
+  let scrambleModalReadOnly = false;
+
+  function freshScrambleGrid(){
+    const grid = {};
+    Object.keys(FACE_LAYOUT).forEach(face => {
+      grid[face] = new Array(9).fill(null);
+      grid[face][4] = FACE_CENTER_COLOR[face];
+    });
+    return grid;
+  }
+
+  function countColor(colorId){
+    let n = 0;
+    Object.values(scrambleNetState).forEach(arr => arr.forEach(c => { if(c === colorId) n++; }));
+    return n;
+  }
+
+  function refreshPaletteCounts(){
+    PALETTE.forEach(p => {
+      const count = countColor(p.id);
+      const label = document.querySelector('.palette-count[data-color="' + p.id + '"]');
+      if(label) label.textContent = count + '/9';
+      const btn = document.querySelector('.palette-swatch[data-color="' + p.id + '"]');
+      if(btn) btn.classList.toggle('maxed', count >= 9);
+    });
+  }
+
+  function buildPalette(){
+    const row = document.getElementById('paletteRow');
+    if(row.dataset.built) return;
+    row.dataset.built = '1';
+    PALETTE.forEach(p => {
+      const wrap = document.createElement('div');
+      wrap.className = 'palette-item';
+      const btn = document.createElement('button');
+      btn.className = 'palette-swatch';
+      btn.style.background = p.hex;
+      btn.dataset.color = p.id;
+      btn.title = p.id;
+      btn.addEventListener('click', () => {
+        if(btn.classList.contains('maxed')) return;
+        currentPaintColor = p.id;
+        document.querySelectorAll('.palette-swatch').forEach(s => s.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+      const label = document.createElement('div');
+      label.className = 'palette-count';
+      label.dataset.color = p.id;
+      label.textContent = '1/9';
+      wrap.appendChild(btn);
+      wrap.appendChild(label);
+      row.appendChild(wrap);
+    });
+  }
+
+  function buildScrambleNet(){
+    const container = document.getElementById('scrambleNet');
+    if(container.dataset.built) return;
+    container.dataset.built = '1';
+    Object.keys(FACE_LAYOUT).forEach(face => {
+      const layout = FACE_LAYOUT[face];
+      const faceEl = document.createElement('div');
+      faceEl.className = 'net-face';
+      faceEl.style.gridColumn = layout.col + ' / ' + (layout.col + 3);
+      faceEl.style.gridRow = layout.row + ' / ' + (layout.row + 3);
+      for(let i = 0; i < 9; i++){
+        const sticker = document.createElement('button');
+        sticker.className = 'net-sticker' + (i === 4 ? ' locked' : ' empty');
+        sticker.dataset.face = face;
+        sticker.dataset.index = i;
+        sticker.addEventListener('click', () => {
+          if(i === 4 || scrambleModalReadOnly) return;
+          if(!currentPaintColor) return;
+          const existing = scrambleNetState[face][i];
+          if(existing === currentPaintColor) return;
+          if(countColor(currentPaintColor) >= 9) return;
+          scrambleNetState[face][i] = currentPaintColor;
+          sticker.style.background = PALETTE_HEX[currentPaintColor];
+          sticker.classList.remove('empty');
+          refreshPaletteCounts();
+        });
+        faceEl.appendChild(sticker);
+      }
+      container.appendChild(faceEl);
+    });
+  }
+
+  function refreshNetVisuals(){
+    document.querySelectorAll('.net-sticker').forEach(s => {
+      const face = s.dataset.face, idx = +s.dataset.index;
+      const color = scrambleNetState[face][idx];
+      if(color){
+        s.style.background = PALETTE_HEX[color];
+        s.classList.remove('empty');
+      } else {
+        s.style.background = '';
+        s.classList.add('empty');
+      }
+      s.disabled = scrambleModalReadOnly && idx !== 4;
+    });
+    refreshPaletteCounts();
+  }
+
+  function openScrambleModal(readOnly, existingGrid){
+    buildPalette();
+    buildScrambleNet();
+    scrambleModalReadOnly = !!readOnly;
+    scrambleNetState = existingGrid ? JSON.parse(JSON.stringify(existingGrid)) : freshScrambleGrid();
+    currentPaintColor = null;
+    document.querySelectorAll('.palette-swatch').forEach(s => s.classList.remove('selected'));
+    refreshNetVisuals();
+    document.getElementById('scrambleModalTitle').textContent = scrambleModalReadOnly ? 'Your scramble' : 'Enter your scramble';
+    document.getElementById('scrambleModalNote').style.display = scrambleModalReadOnly ? 'none' : '';
+    document.getElementById('paletteRow').style.display = scrambleModalReadOnly ? 'none' : '';
+    document.getElementById('saveScrambleBtn').style.display = scrambleModalReadOnly ? 'none' : '';
+    document.getElementById('cancelScrambleBtn').textContent = scrambleModalReadOnly ? 'Close' : 'Cancel';
+    document.getElementById('scrambleModalWarning').style.display = 'none';
+    document.getElementById('scrambleModalOverlay').classList.add('open');
+  }
+  function closeScrambleModal(){
+    document.getElementById('scrambleModalOverlay').classList.remove('open');
+  }
+
+  document.getElementById('handScrambleBtn').addEventListener('click', () => openScrambleModal(false, null));
+  document.getElementById('viewCustomScrambleBtn').addEventListener('click', () => {
+    if(state.customScrambleGrid) openScrambleModal(true, state.customScrambleGrid);
+  });
+  document.getElementById('cancelScrambleBtn').addEventListener('click', closeScrambleModal);
+  document.getElementById('scrambleModalOverlay').addEventListener('click', (e) => {
+    if(e.target === document.getElementById('scrambleModalOverlay')) closeScrambleModal();
+  });
+  document.getElementById('saveScrambleBtn').addEventListener('click', () => {
+    const counts = {};
+    PALETTE.forEach(p => { counts[p.id] = 0; });
+    let filled = 0, total = 0;
+    Object.keys(scrambleNetState).forEach(face => {
+      scrambleNetState[face].forEach(c => {
+        total++;
+        if(c){ counts[c]++; filled++; }
+      });
+    });
+    const warningEl = document.getElementById('scrambleModalWarning');
+    const uneven = PALETTE.some(p => counts[p.id] !== 9);
+    if(filled < total){
+      warningEl.textContent = 'Fill in every square before saving (' + filled + ' of ' + total + ' done).';
+      warningEl.style.display = '';
+      return;
+    }
+    if(uneven){
+      warningEl.textContent = "Heads up: each color should appear 9 times total — double check your entries. Saving anyway.";
+      warningEl.style.display = '';
+    }
+    state.customScrambleGrid = JSON.parse(JSON.stringify(scrambleNetState));
+    state.scramble = 'Hand-scrambled cube';
+    renderScramble();
+    document.getElementById('viewCustomScrambleBtn').style.display = '';
+    closeScrambleModal();
+  });
+
+  function serializeAll(){
+    const sessionsOut = {};
+    Object.keys(state.sessions).forEach(id => {
+      sessionsOut[id] = {
+        name: state.sessions[id].name,
+        times: state.sessions[id].times.map(t => ({ ms: t.ms, penalty: t.penalty, scramble: t.scramble }))
+      };
+    });
+    const payload = {
+      savedAt: new Date().toISOString(),
+      currentSession: state.currentSession,
+      sessions: sessionsOut
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  function sessionsFromParsed(parsed){
+    if(parsed && parsed.sessions && typeof parsed.sessions === 'object' && !Array.isArray(parsed.sessions)){
+      const sessions = {};
+      Object.keys(parsed.sessions).forEach(id => {
+        const s = parsed.sessions[id] || {};
+        sessions[id] = {
+          name: s.name || id,
+          times: (Array.isArray(s.times) ? s.times : []).map(t => ({ ms: t.ms, penalty: t.penalty || 'none', scramble: t.scramble || '', videoUrl: null }))
+        };
+      });
+      if(!Object.keys(sessions).length) return null;
+      const currentSession = (parsed.currentSession && sessions[parsed.currentSession]) ? parsed.currentSession : Object.keys(sessions)[0];
+      return { sessions, currentSession };
+    }
+    const flat = Array.isArray(parsed && parsed.times) ? parsed.times : Array.isArray(parsed) ? parsed : null;
+    if(flat){
+      return {
+        sessions: { 'session-1': { name: 'Session 1', times: flat.map(t => ({ ms: t.ms, penalty: t.penalty || 'none', scramble: t.scramble || '', videoUrl: null })) } },
+        currentSession: 'session-1'
+      };
+    }
+    return null;
+  }
+
+  function downloadJSON(text, filename){
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  const backupStatusEl = document.getElementById('backupStatus');
+  const autosaveToggle = document.getElementById('autosaveToggle');
+  const LOCAL_KEY = 'cubeTimerSolvesV1';
+
+  function setBackupStatus(text){
+    backupStatusEl.textContent = text;
+  }
+
+  function localStorageWorks(){
+    try{
+      const k = '__cube_timer_test__';
+      window.localStorage.setItem(k, '1');
+      window.localStorage.removeItem(k);
+      return true;
+    }catch(err){
+      return false;
+    }
+  }
+  const hasLocalStorage = localStorageWorks();
+
+  function persistLocal(){
+    if(!hasLocalStorage) return;
+    try{
+      window.localStorage.setItem(LOCAL_KEY, serializeAll());
+    }catch(err){
+      /* storage full or unavailable - silently skip, manual export still works */
+    }
+  }
+
+  function loadFromLocalStorage(){
+    if(!hasLocalStorage) return;
+    try{
+      const raw = window.localStorage.getItem(LOCAL_KEY);
+      if(!raw) return;
+      const parsed = JSON.parse(raw);
+      const result = sessionsFromParsed(parsed);
+      if(result){
+        state.sessions = result.sessions;
+        state.currentSession = result.currentSession;
+        state.times = state.sessions[state.currentSession].times;
+      }
+    }catch(err){
+      /* ignore corrupt local data */
+    }
+  }
+
+  async function runFsaAutosave(){
+    if(state.autosaveMode === 'fsa' && state.backupHandle){
+      try{
+        const writable = await state.backupHandle.createWritable();
+        await writable.write(serializeAll());
+        await writable.close();
+        setBackupStatus('Also mirrored to ' + state.backupHandle.name + ' just now');
+      }catch(err){
+        setBackupStatus("Couldn't write to the connected file — try reconnecting it.");
+      }
+    }
+  }
+
+  function scheduleAutosave(){
+    persistLocal();
+    if(state.autosaveMode !== 'fsa') return;
+    clearTimeout(state.autosaveTimer);
+    state.autosaveTimer = setTimeout(runFsaAutosave, 600);
+  }
+
+  autosaveToggle.addEventListener('click', async () => {
+    if(state.autosaveMode === 'fsa'){
+      state.autosaveMode = 'off';
+      state.backupHandle = null;
+      autosaveToggle.textContent = 'Connect a backup file (optional)';
+      autosaveToggle.classList.remove('on');
+      setBackupStatus(hasLocalStorage ? 'Your solves are still saved automatically on this device.' : '');
+      return;
+    }
+    if('showSaveFilePicker' in window){
+      try{
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'cube-timer-solves.json',
+          types: [{ description: 'JSON backup', accept: { 'application/json': ['.json'] } }]
+        });
+        state.backupHandle = handle;
+        state.autosaveMode = 'fsa';
+        autosaveToggle.textContent = 'Connected — stop mirroring';
+        autosaveToggle.classList.add('on');
+        await runFsaAutosave();
+      }catch(err){
+        setBackupStatus('Backup file not connected.');
+      }
+    } else {
+      setBackupStatus("Your browser doesn't support writing directly to a file — use Download backup instead, or your solves are already saved automatically on this device.");
+    }
+  });
+
+  const downloadBackupBtn = document.getElementById('downloadBackupBtn');
+  downloadBackupBtn.addEventListener('click', () => {
+    downloadJSON(serializeAll(), 'cube-timer-solves.json');
+    setBackupStatus('Downloaded a backup file (all sessions)');
+  });
+
+  const restoreBtn = document.getElementById('restoreBtn');
+  const restoreInput = document.getElementById('restoreInput');
+  restoreBtn.addEventListener('click', () => restoreInput.click());
+  restoreInput.addEventListener('change', async () => {
+    const file = restoreInput.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const result = sessionsFromParsed(parsed);
+      if(!result){ setBackupStatus("That file doesn't look like a cube timer backup."); return; }
+      const currentTotal = Object.values(state.sessions).reduce((a, s) => a + s.times.length, 0);
+      const loadedTotal = Object.values(result.sessions).reduce((a, s) => a + s.times.length, 0);
+      const replace = currentTotal === 0 || window.confirm('Replace all sessions with the ' + Object.keys(result.sessions).length + ' session(s) (' + loadedTotal + ' solve(s) total) from this backup?');
+      if(replace){
+        state.sessions = result.sessions;
+        state.currentSession = result.currentSession;
+        state.times = state.sessions[state.currentSession].times;
+        renderAll();
+        refreshSessionUI();
+        scheduleAutosave();
+        setBackupStatus('Restored from backup');
+      }
+    }catch(err){
+      setBackupStatus("Couldn't read that backup file.");
+    }
+    restoreInput.value = '';
+  });
+
+  function deleteTime(i){
+    const t = state.times[i];
+    if(t.videoUrl) URL.revokeObjectURL(t.videoUrl);
+    state.times.splice(i, 1);
+    renderAll();
+    scheduleAutosave();
+  }
+
+  function getVideoElement(url){
+    return new Promise((resolve, reject) => {
+      const v = document.createElement('video');
+      v.src = url; v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.addEventListener('loadedmetadata', () => resolve(v), { once: true });
+      v.addEventListener('error', () => reject(new Error('video load failed')), { once: true });
+    });
+  }
+
+  function seekTo(v, t){
+    return new Promise((resolve) => {
+      function onSeeked(){ v.removeEventListener('seeked', onSeeked); resolve(); }
+      v.addEventListener('seeked', onSeeked);
+      v.currentTime = Math.max(0, Math.min(t, v.duration - 0.05));
+    });
+  }
+
+  function grayDiff(a, b){
+    let sum = 0, n = 0;
+    for(let i = 0; i < a.length; i += 4){
+      const la = 0.299*a[i] + 0.587*a[i+1] + 0.114*a[i+2];
+      const lb = 0.299*b[i] + 0.587*b[i+1] + 0.114*b[i+2];
+      sum += Math.abs(la - lb);
+      n++;
+    }
+    return sum / n;
+  }
+
+  async function computeMotionProfile(video){
+    const duration = video.duration;
+    const dt = Math.max(0.3, duration / 16);
+    const w = 64, h = 48;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const samples = [];
+    let prevData = null;
+    for(let t = 0; t < duration; t += dt){
+      await seekTo(video, t);
+      ctx.drawImage(video, 0, 0, w, h);
+      const data = ctx.getImageData(0, 0, w, h).data;
+      if(prevData) samples.push({ t, motion: grayDiff(prevData, data) });
+      prevData = data;
+    }
+    return { samples, duration };
+  }
+
+  function findPausePoints(profile){
+    const { samples, duration } = profile;
+    if(samples.length < 4) return [];
+    const sorted = samples.map(s => s.motion).slice().sort((a,b)=>a-b);
+    const threshold = sorted[Math.floor(sorted.length * 0.3)];
+    const margin = duration * 0.12;
+    const runs = [];
+    let cur = null;
+    for(const s of samples){
+      if(s.t < margin || s.t > duration - margin){
+        if(cur){ runs.push(cur); cur = null; }
+        continue;
+      }
+      if(s.motion <= threshold){
+        if(!cur) cur = { start: s.t, end: s.t };
+        else cur.end = s.t;
+      } else if(cur){
+        runs.push(cur); cur = null;
+      }
+    }
+    if(cur) runs.push(cur);
+    const meaningful = runs.filter(r => (r.end - r.start) >= 0.3);
+    meaningful.sort((a,b) => (b.end-b.start) - (a.end-a.start));
+    const top = meaningful.slice(0, 4).sort((a,b) => a.start - b.start);
+    return top.map(r => (r.start + r.end) / 2);
+  }
+
+  async function captureFrameAt(video, t, w, h){
+    await seekTo(video, t);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', 0.7);
+  }
+
+  async function callCoachAPI(content){
+    const payload = { model: 'claude-sonnet-5', max_tokens: 1000, messages: [{ role: 'user', content }] };
+    let proxyTried = false;
+    try{
+      const proxyResp = await fetch('/.netlify/functions/coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      proxyTried = true;
+      if(proxyResp.ok) return await proxyResp.json();
+      if(proxyResp.status !== 404){
+        const errBody = await proxyResp.text();
+        throw new Error('Coach proxy error ' + proxyResp.status + ': ' + errBody.slice(0, 200));
+      }
+      // 404 = the Netlify function isn't deployed yet, fall through to a personal key below
+    }catch(err){
+      if(proxyTried) throw err; // a real error from a deployed proxy - surface it directly
+      // otherwise the fetch itself failed (e.g. offline) - still try the personal-key path below
+    }
+
+    const apiKey = (window.localStorage.getItem('cubeTimerApiKey') || '').trim();
+    if(!apiKey){
+      const err = new Error('No AI coach configured.');
+      err.code = 'NO_KEY';
+      throw err;
+    }
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(payload)
+    });
+    if(!response.ok){
+      const errBody = await response.text();
+      throw new Error('API error ' + response.status + ': ' + errBody.slice(0, 200));
+    }
+    return await response.json();
+  }
+
+  function generateFreeTips(points, hadRealPauses, totalSec){
+    const tipPool = [
+      'Try to plan your next move while your hands are still finishing the current one — this is called look-ahead, and it quietly eliminates a lot of these little pauses.',
+      'If you notice yourself regripping the cube often, practicing finger tricks (like using your ring finger for U turns) can cut down on wasted motion.',
+      'Slow, deliberate practice solves — even slower than feels natural — build the muscle memory that actually lets you go faster later.',
+      'Try a few untimed solves where you deliberately look one step ahead before finishing your current move, rather than pausing to look after you finish.',
+      'Smooth transitions between steps (like cross into corners, or F2L into last layer) are often where speed is won or lost — practice just those handoffs in isolation.',
+      'If a specific moment keeps slowing you down across multiple solves, it is often a recognition problem rather than a turning-speed problem — spend some untimed practice just on spotting that pattern faster.'
+    ];
+    const shuffled = tipPool.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+    let opening;
+    if(hadRealPauses && points.length){
+      opening = 'Your hand motion measurably slowed down around ' + points.map(p => p.toFixed(1) + 's').join(', ') + ' during this ' + totalSec + 's solve — worth scrubbing to those exact moments in your recording to see what was happening.';
+    } else {
+      opening = 'Your hand motion stayed fairly steady throughout this ' + totalSec + 's solve, without any single moment standing out as a big pause.';
+    }
+    return opening + '\n\n' + shuffled.map(t => '• ' + t).join('\n') +
+      '\n\n(These are general tips generated locally, not from an AI reviewing your footage — add an API key or coach server in Settings for footage-specific feedback.)';
+  }
+
+  async function analyzeSolve(t){
+    t.feedbackLoading = true;
+    t.feedbackError = null;
+    t.expanded = true;
+    renderAll();
+    try{
+      const video = await getVideoElement(t.videoUrl);
+      const profile = await computeMotionProfile(video);
+      let points = findPausePoints(profile);
+      let labels;
+      const hadRealPauses = points.length > 0;
+      if(points.length){
+        labels = points.map(p => p.toFixed(1) + 's (motion slowed)');
+      } else {
+        points = [profile.duration*0.25, profile.duration*0.5, profile.duration*0.75];
+        labels = points.map(p => p.toFixed(1) + 's (checkpoint)');
+      }
+      const totalSec = (t.ms/1000).toFixed(2);
+      try{
+        const frames = [];
+        for(const p of points){
+          frames.push(await captureFrameAt(video, p, 320, 240));
+        }
+        const promptText = "You're a friendly speedcubing coach reviewing a webcam recording of someone solving a Rubik's cube. The solve took " + totalSec + " seconds total. Below are still frames captured at moments where hand motion measurably slowed down (timestamps: " + labels.join(', ') + "). You can't reliably read exact cube colors or moves from single frames, so don't claim to identify specific algorithms or exact moves - instead comment on visible hand position, grip, regripping, hesitation, and general body mechanics, combined with general speedcubing coaching principles (look-ahead, cross efficiency, finger tricks, avoiding regrips, smooth transitions between steps/layers). Structure your answer as: one short sentence on overall pacing, then 2 to 4 bullet observations tied to the timestamps, then 2 to 3 concrete practice tips. Keep it under 180 words, warm and specific, at most one brief caveat about visibility, no other disclaimers or filler.";
+        const content = [{ type: 'text', text: promptText }];
+        for(const f of frames){
+          content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: f.split(',')[1] } });
+        }
+        const data = await callCoachAPI(content);
+        const text = (data.content || []).map(b => b.text || '').join('\n').trim();
+        t.feedback = text || "Couldn't generate feedback for this solve.";
+      }catch(innerErr){
+        if(innerErr && innerErr.code === 'NO_KEY'){
+          t.feedback = generateFreeTips(points, hadRealPauses, totalSec);
+        } else {
+          throw innerErr;
+        }
+      }
+    }catch(err){
+      t.feedbackError = "Couldn't analyze this solve — " + (err && err.message ? err.message : 'unknown error') + '.';
+    }
+    t.feedbackLoading = false;
+    renderAll();
+  }
+
+  function renderHistory(){
+    historyCount.textContent = state.times.length + (state.times.length === 1 ? ' solve' : ' solves');
+    if(!state.times.length){
+      historyList.innerHTML = '<div class="empty">No solves yet — your first one will show up here.</div>';
+      return;
+    }
+    historyList.innerHTML = '';
+    for(let i = state.times.length - 1; i >= 0; i--){
+      const t = state.times[i];
+      const wrapper = document.createElement('div');
+      wrapper.className = 'solve-item';
+
+      const row = document.createElement('div');
+      const showPanel = t.expanded && (t.feedbackLoading || t.feedback || t.feedbackError);
+      row.className = 'row' + (t.penalty === 'DNF' ? ' dnf' : t.penalty === '+2' ? ' plus2' : '') + (showPanel ? ' has-panel' : '');
+      const timeLabel = t.penalty === 'DNF' ? 'DNF' : fmt(effMs(t));
+      row.innerHTML =
+        '<div class="idx">' + (i+1) + '</div>' +
+        '<div class="time">' + timeLabel + '</div>' +
+        '<div class="scr">' + t.scramble + '</div>' +
+        '<div class="row-actions">' +
+          '<button data-act="share" class="dlvideo">share</button>' +
+          (t.customScrambleGrid ? '<button data-act="viewscramble" class="watch">view scramble</button>' : '') +
+          (t.videoUrl ? '<button data-act="watch" class="watch">watch</button>' : '') +
+          (t.videoUrl ? '<button data-act="dlvideo" class="dlvideo">save video</button>' : '') +
+          (t.videoUrl ? '<button data-act="coach" class="coach">' + (t.feedbackLoading ? 'analyzing…' : 'coach') + '</button>' : '') +
+          '<button data-act="p2" class="' + (t.penalty === '+2' ? 'active' : '') + '">+2</button>' +
+          '<button data-act="dnf" class="' + (t.penalty === 'DNF' ? 'active' : '') + '">DNF</button>' +
+          '<button data-act="del">delete</button>' +
+        '</div>';
+      row.querySelector('[data-act="share"]').addEventListener('click', () => exportSolveCard(t, i, timeLabel));
+      const viewScrambleBtn = row.querySelector('[data-act="viewscramble"]');
+      if(viewScrambleBtn){
+        viewScrambleBtn.addEventListener('click', () => openScrambleModal(true, t.customScrambleGrid));
+      }
+      const watchBtn = row.querySelector('[data-act="watch"]');
+      if(watchBtn){
+        watchBtn.addEventListener('click', () => openVideoModal(t.videoUrl, 'Solve ' + (i+1) + ' — ' + timeLabel));
+      }
+      const dlVideoBtn = row.querySelector('[data-act="dlvideo"]');
+      if(dlVideoBtn){
+        dlVideoBtn.addEventListener('click', () => {
+          const ext = t.videoMime && t.videoMime.includes('mp4') ? 'mp4' : 'webm';
+          const a = document.createElement('a');
+          a.href = t.videoUrl;
+          a.download = 'solve-' + (i+1) + '-' + timeLabel.replace(/[^0-9a-zA-Z]/g, '') + '.' + ext;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        });
+      }
+      const coachBtn = row.querySelector('[data-act="coach"]');
+      if(coachBtn){
+        coachBtn.addEventListener('click', () => {
+          if(t.feedbackLoading) return;
+          if(!t.feedback && !t.feedbackError){
+            analyzeSolve(t);
+          } else {
+            t.expanded = !t.expanded;
+            renderAll();
+          }
+        });
+      }
+      row.querySelector('[data-act="p2"]').addEventListener('click', () => {
+        t.penalty = t.penalty === '+2' ? 'none' : '+2';
+        renderAll();
+        scheduleAutosave();
+      });
+      row.querySelector('[data-act="dnf"]').addEventListener('click', () => {
+        t.penalty = t.penalty === 'DNF' ? 'none' : 'DNF';
+        renderAll();
+        scheduleAutosave();
+      });
+      row.querySelector('[data-act="del"]').addEventListener('click', () => deleteTime(i));
+      wrapper.appendChild(row);
+
+      if(showPanel){
+        const panel = document.createElement('div');
+        panel.className = 'feedback-panel' + (t.feedbackLoading ? ' loading' : '') + (t.feedbackError ? ' error' : '');
+        panel.textContent = t.feedbackLoading
+          ? 'Watching for slowdowns and pulling in coaching notes…'
+          : (t.feedbackError || t.feedback);
+        wrapper.appendChild(panel);
+      }
+      historyList.appendChild(wrapper);
+    }
+  }
+
+  function renderAll(){
+    renderStats();
+    renderStatsChart();
+    renderHistory();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if(e.code !== 'Space') return;
+    if(document.getElementById('timerView').style.display === 'none') return;
+    e.preventDefault();
+    if(e.repeat) return;
+    if(state.phase === 'running'){
+      stopRun();
+    } else if(state.phase === 'idle'){
+      startCharging();
+    }
+  });
+  document.addEventListener('keyup', (e) => {
+    if(e.code !== 'Space') return;
+    if(document.getElementById('timerView').style.display === 'none') return;
+    e.preventDefault();
+    if(state.phase === 'armed'){
+      startRun();
+    } else if(state.phase === 'charging'){
+      cancelCharging();
+    }
+  });
+
+  stageEl.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if(state.phase === 'running'){
+      stopRun();
+    } else if(state.phase === 'idle'){
+      startCharging();
+    }
+  }, { passive: false });
+  stageEl.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if(state.phase === 'armed'){
+      startRun();
+    } else if(state.phase === 'charging'){
+      cancelCharging();
+    }
+  }, { passive: false });
+
+  document.getElementById('resetSession').addEventListener('click', () => {
+    state.times.forEach(t => { if(t.videoUrl) URL.revokeObjectURL(t.videoUrl); });
+    state.times.length = 0;
+    renderAll();
+    scheduleAutosave();
+  });
+
+  function refreshSessionUI(){
+    const select = document.getElementById('sessionSelect');
+    const list = document.getElementById('sessionList');
+    if(select){
+      select.innerHTML = '';
+      Object.keys(state.sessions).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = state.sessions[id].name;
+        if(id === state.currentSession) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+    if(list){
+      list.innerHTML = '';
+      Object.keys(state.sessions).forEach(id => {
+        const s = state.sessions[id];
+        const row = document.createElement('div');
+        row.className = 'session-row' + (id === state.currentSession ? ' current' : '');
+        row.innerHTML =
+          '<span class="sname">' + s.name + '</span>' +
+          '<span class="scount">' + s.times.length + (s.times.length === 1 ? ' solve' : ' solves') + '</span>' +
+          (id === state.currentSession ? '' : '<button data-act="switch">Switch to</button>') +
+          '<button data-act="rename">Rename</button>' +
+          '<button data-act="delete">Delete</button>';
+        const switchBtn = row.querySelector('[data-act="switch"]');
+        if(switchBtn) switchBtn.addEventListener('click', () => switchSession(id));
+        row.querySelector('[data-act="rename"]').addEventListener('click', () => renameSessionPrompt(id));
+        row.querySelector('[data-act="delete"]').addEventListener('click', () => deleteSessionConfirm(id));
+        list.appendChild(row);
+      });
+    }
+  }
+
+  function switchSession(id){
+    if(!state.sessions[id] || id === state.currentSession) return;
+    state.currentSession = id;
+    state.times = state.sessions[id].times;
+    renderAll();
+    refreshSessionUI();
+    persistLocal();
+  }
+
+  function createSession(){
+    const name = window.prompt('Name this session:', 'Session ' + (Object.keys(state.sessions).length + 1));
+    if(name === null) return;
+    const id = 'session-' + Date.now();
+    state.sessions[id] = { name: name.trim() || id, times: [] };
+    state.currentSession = id;
+    state.times = state.sessions[id].times;
+    renderAll();
+    refreshSessionUI();
+    scheduleAutosave();
+  }
+
+  function renameSessionPrompt(id){
+    const s = state.sessions[id];
+    if(!s) return;
+    const name = window.prompt('Rename session:', s.name);
+    if(name === null) return;
+    s.name = name.trim() || s.name;
+    refreshSessionUI();
+    scheduleAutosave();
+  }
+
+  function deleteSessionConfirm(id){
+    const ids = Object.keys(state.sessions);
+    if(ids.length <= 1){
+      window.alert('You need at least one session — create another before deleting this one.');
+      return;
+    }
+    const s = state.sessions[id];
+    if(!window.confirm('Delete "' + s.name + '" and its ' + s.times.length + ' solve(s)? This cannot be undone.')) return;
+    s.times.forEach(t => { if(t.videoUrl) URL.revokeObjectURL(t.videoUrl); });
+    delete state.sessions[id];
+    if(state.currentSession === id){
+      const nextId = Object.keys(state.sessions)[0];
+      state.currentSession = nextId;
+      state.times = state.sessions[nextId].times;
+      renderAll();
+    }
+    refreshSessionUI();
+    scheduleAutosave();
+  }
+
+  document.getElementById('sessionSelect').addEventListener('change', (e) => switchSession(e.target.value));
+  document.getElementById('addSessionBtn').addEventListener('click', createSession);
+
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const apiKeyStatus = document.getElementById('apiKeyStatus');
+  try{
+    const savedKey = window.localStorage.getItem('cubeTimerApiKey');
+    if(savedKey){
+      apiKeyInput.value = savedKey;
+      apiKeyStatus.textContent = 'Key saved on this device.';
+    }
+  }catch(err){}
+  document.getElementById('saveApiKeyBtn').addEventListener('click', () => {
+    try{
+      window.localStorage.setItem('cubeTimerApiKey', apiKeyInput.value.trim());
+      apiKeyStatus.textContent = apiKeyInput.value.trim() ? 'Key saved on this device.' : 'Key cleared.';
+    }catch(err){
+      apiKeyStatus.textContent = "Couldn't save the key on this device.";
+    }
+  });
+
+  function inspectionSettings(){
+    let enabled = false, seconds = 15;
+    try{
+      enabled = window.localStorage.getItem('cubeTimerInspectionEnabled') === '1';
+      seconds = parseFloat(window.localStorage.getItem('cubeTimerInspectionSeconds')) || 15;
+    }catch(err){}
+    return { enabled, seconds };
+  }
+
+  const inspectionEnabledCheckbox = document.getElementById('inspectionEnabledCheckbox');
+  const inspectionSecondsInput = document.getElementById('inspectionSecondsInput');
+  (function initInspectionSettingsUI(){
+    const { enabled, seconds } = inspectionSettings();
+    inspectionEnabledCheckbox.checked = enabled;
+    inspectionSecondsInput.value = seconds;
+  })();
+  function persistInspectionSettings(){
+    try{
+      window.localStorage.setItem('cubeTimerInspectionEnabled', inspectionEnabledCheckbox.checked ? '1' : '0');
+      window.localStorage.setItem('cubeTimerInspectionSeconds', String(parseFloat(inspectionSecondsInput.value) || 15));
+    }catch(err){}
+    if(state.phase === 'idle') startInspectionIfEnabled();
+  }
+  inspectionEnabledCheckbox.addEventListener('change', persistInspectionSettings);
+  inspectionSecondsInput.addEventListener('change', persistInspectionSettings);
+
+  const THEMES = {
+    midnight: { name: 'Midnight', bg:'#0b0d12', surface:'#12151c', 'surface-2':'#191d27', border:'#262b36', text:'#eef0f3', muted:'#6d7484', 'muted-2':'#454b58', blue:'#3468d1', green:'#3fae5a' },
+    ocean: { name: 'Ocean', bg:'#071820', surface:'#0e252f', 'surface-2':'#123240', border:'#1f4353', text:'#eaf6fa', muted:'#5f97ab', 'muted-2':'#3a6577', blue:'#2fb6d9', green:'#33c58f' },
+    sunset: { name: 'Sunset', bg:'#170f0d', surface:'#241713', 'surface-2':'#301e18', border:'#4a2f26', text:'#fbeee6', muted:'#c99a83', 'muted-2':'#8a5c47', blue:'#e8955a', green:'#e0473a' },
+    forest: { name: 'Forest', bg:'#0c130e', surface:'#121d15', 'surface-2':'#19281d', border:'#2a3f2e', text:'#eaf3ec', muted:'#7fa88a', 'muted-2':'#4c6b53', blue:'#4fae6e', green:'#8bc34a' },
+    paper: { name: 'Paper', bg:'#f5f3ee', surface:'#ffffff', 'surface-2':'#eeece5', border:'#dcd8cd', text:'#20201c', muted:'#6b6862', 'muted-2':'#a9a599', blue:'#2f6fd0', green:'#2f8f4e' }
+  };
+  const THEME_KEY = 'cubeTimerTheme';
+  const CUSTOM_KEY = 'cubeTimerCustomTheme';
+
+  function applyThemeVars(vars){
+    const root = document.documentElement;
+    Object.keys(vars).forEach(k => {
+      if(k === 'name') return;
+      root.style.setProperty('--' + k, vars[k]);
+    });
+  }
+
+  function setActiveSwatch(id){
+    document.querySelectorAll('.theme-swatch').forEach(el => {
+      el.classList.toggle('active', el.dataset.theme === id);
+    });
+  }
+
+  function applyTheme(id){
+    if(!THEMES[id]) return;
+    applyThemeVars(THEMES[id]);
+    setActiveSwatch(id);
+    try{ window.localStorage.setItem(THEME_KEY, id); }catch(err){}
+    document.getElementById('colorBg').value = THEMES[id].bg;
+    document.getElementById('colorSurface').value = THEMES[id].surface;
+    document.getElementById('colorText').value = THEMES[id].text;
+    document.getElementById('colorAccent').value = THEMES[id].blue;
+  }
+
+  function applyCustomTheme(persist){
+    const bg = document.getElementById('colorBg').value;
+    const surface = document.getElementById('colorSurface').value;
+    const text = document.getElementById('colorText').value;
+    const accent = document.getElementById('colorAccent').value;
+    const vars = { bg, surface, 'surface-2': surface, border: accent, text, muted: text, 'muted-2': text, blue: accent, green: accent };
+    applyThemeVars(vars);
+    setActiveSwatch('custom');
+    if(persist){
+      try{
+        window.localStorage.setItem(THEME_KEY, 'custom');
+        window.localStorage.setItem(CUSTOM_KEY, JSON.stringify({ bg, surface, text, accent }));
+      }catch(err){}
+    }
+  }
+
+  function buildThemeSwatches(){
+    const container = document.getElementById('themeSwatches');
+    Object.keys(THEMES).forEach(id => {
+      const btn = document.createElement('button');
+      btn.className = 'theme-swatch';
+      btn.dataset.theme = id;
+      btn.innerHTML = '<span class="dot" style="background:' + THEMES[id].bg + '; box-shadow: inset 0 0 0 10px ' + THEMES[id].blue + '22;"></span><span>' + THEMES[id].name + '</span>';
+      btn.addEventListener('click', () => applyTheme(id));
+      container.appendChild(btn);
+    });
+  }
+
+  ['colorBg','colorSurface','colorText','colorAccent'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => applyCustomTheme(true));
+  });
+
+  function initTheme(){
+    buildThemeSwatches();
+    let savedTheme = 'midnight';
+    try{ savedTheme = window.localStorage.getItem(THEME_KEY) || 'midnight'; }catch(err){}
+    if(savedTheme === 'custom'){
+      try{
+        const custom = JSON.parse(window.localStorage.getItem(CUSTOM_KEY) || '{}');
+        document.getElementById('colorBg').value = custom.bg || '#0b0d12';
+        document.getElementById('colorSurface').value = custom.surface || '#12151c';
+        document.getElementById('colorText').value = custom.text || '#eef0f3';
+        document.getElementById('colorAccent').value = custom.accent || '#3468d1';
+        applyCustomTheme(false);
+      }catch(err){
+        applyTheme('midnight');
+      }
+    } else {
+      applyTheme(savedTheme);
+    }
+  }
+  initTheme();
+
+  let wakeLock = null;
+  async function requestWakeLock(){
+    if(!('wakeLock' in navigator)) return;
+    try{
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }catch(err){
+      /* not supported right now (e.g. battery saver) - ignore silently */
+    }
+  }
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' && !wakeLock) requestWakeLock();
+  });
+  document.addEventListener('pointerdown', () => { if(!wakeLock) requestWakeLock(); }, { once: true });
+  document.addEventListener('keydown', () => { if(!wakeLock) requestWakeLock(); }, { once: true });
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {
+        /* not fatal - app still works fully online, just without offline caching */
+      });
+    });
+  }
+
+  loadFromLocalStorage();
+  refreshSessionUI();
+  if(hasLocalStorage && state.times.length){
+    setBackupStatus('Restored ' + state.times.length + ' solve(s) saved on this device.');
+  } else if(hasLocalStorage){
+    setBackupStatus('Your solves save automatically on this device.');
+  } else {
+    setBackupStatus("This browser won't save automatically — use Download backup before you close the tab.");
+  }
+  renderAll();
+
+  // ---- Compete mode ----
+  let competeEngine = null;
+  let match = null;
+  let competePhase = 'idle';
+  let competeChargeRaf = null;
+  let competeRunStart = 0;
+  let competeRunRaf = null;
+
+  function computeGlobalPlayerAverage(){
+    const valid = [];
+    Object.values(state.sessions).forEach(s => {
+      s.times.forEach(t => { if(t.penalty !== 'DNF') valid.push(effMs(t)); });
+    });
+    if(!valid.length) return null;
+    return (valid.reduce((a,b) => a+b, 0) / valid.length) / 1000;
+  }
+
+  function botNameForAvg(avgSec){
+    if(avgSec >= 60) return 'Rookie-Bot';
+    if(avgSec >= 30) return 'Casual-Bot';
+    if(avgSec >= 15) return 'Club-Bot';
+    if(avgSec >= 8) return 'Speedy-Bot';
+    return 'Turbo-Bot';
+  }
+
+  function generateBotRoster(baseAvgSec){
+    const tiers = [
+      { mult: 1.4, tag: 'Easier' },
+      { mult: 1.0, tag: 'Matched' },
+      { mult: 0.7, tag: 'Harder' }
+    ];
+    return tiers.map((t, i) => {
+      const avg = Math.max(2, baseAvgSec * t.mult);
+      return { id: 'bot' + i, name: botNameForAvg(avg) + ' (' + t.tag + ')', avg };
+    });
+  }
+
+  function computeAvg(arr){
+    if(!arr.length) return null;
+    if(arr.length < 3) return arr.reduce((a,b) => a+b, 0) / arr.length;
+    const sorted = arr.slice().sort((a,b) => a-b);
+    const trimmed = sorted.slice(1, -1);
+    return trimmed.reduce((a,b) => a+b, 0) / trimmed.length;
+  }
+
+  let botAvgMode = 'auto';
+
+  function populateBotPreview(){
+    const avgSec = computeGlobalPlayerAverage();
+    const suggested = avgSec ? Math.round(avgSec * 10) / 10 : 20;
+    if(botAvgMode === 'auto'){
+      document.getElementById('botTargetInput').value = suggested;
+    }
+    document.getElementById('botPreview').innerHTML =
+      (avgSec
+        ? 'Based on your solves so far (~' + suggested + 's average), you\'ll face a field of three bots around your level.'
+        : 'No solves yet to match you by, so here\'s a default field of three bots.') +
+      (botAvgMode === 'auto'
+        ? ' Switch to Manual to pick your own number instead.'
+        : ' Set your own target below, or switch back to Auto.');
+  }
+
+  const botModeAuto = document.getElementById('botModeAuto');
+  const botModeManual = document.getElementById('botModeManual');
+  const botTargetInputEl = document.getElementById('botTargetInput');
+  botModeAuto.addEventListener('click', () => {
+    botAvgMode = 'auto';
+    botModeAuto.classList.add('active');
+    botModeManual.classList.remove('active');
+    botTargetInputEl.disabled = true;
+    populateBotPreview();
+  });
+  botModeManual.addEventListener('click', () => {
+    botAvgMode = 'manual';
+    botModeManual.classList.add('active');
+    botModeAuto.classList.remove('active');
+    botTargetInputEl.disabled = false;
+    populateBotPreview();
+  });
+
+  function competeResetSegs(){
+    document.querySelectorAll('#competeChargeBar .seg').forEach(s => { s.style.background = 'var(--surface-2)'; });
+  }
+
+  function competeStartCharging(){
+    if(competePhase !== 'idle') return;
+    if(competeInspectionAwaitingReady) return;
+    competePhase = 'charging';
+    const disp = document.getElementById('competeDisplay');
+    disp.classList.add('charging');
+    document.getElementById('competeHint').textContent = 'Keep holding...';
+    const segs = document.querySelectorAll('#competeChargeBar .seg');
+    const segColors = ['#f2f3f5','#f2793a','#3fae5a','#e0473a','#3468d1','#f5c518'];
+    const chargeStart = performance.now();
+    function step(now){
+      const elapsed = now - chargeStart;
+      const pct = Math.min(1, elapsed / 500);
+      const lit = Math.floor(pct * segs.length);
+      segs.forEach((s, i) => { s.style.background = i < lit ? segColors[i] : 'var(--surface-2)'; });
+      if(pct >= 1){
+        competePhase = 'armed';
+        disp.classList.remove('charging');
+        disp.classList.add('armed');
+        document.getElementById('competeHint').textContent = 'Release to go';
+        return;
+      }
+      competeChargeRaf = requestAnimationFrame(step);
+    }
+    competeChargeRaf = requestAnimationFrame(step);
+  }
+
+  function competeCancelCharging(){
+    if(competeChargeRaf) cancelAnimationFrame(competeChargeRaf);
+    competeChargeRaf = null;
+    competeResetSegs();
+    document.getElementById('competeDisplay').classList.remove('charging', 'armed');
+    if(competePhase === 'charging' || competePhase === 'armed'){
+      competePhase = 'idle';
+      document.getElementById('competeHint').textContent = 'Hold space (or press and hold here) to start';
+    }
+  }
+
+  let competeInspectionRaf = null;
+  let competeInspectionStartTs = 0;
+  let competeInspectionPenaltyPending = 'none';
+  let competeInspectionAwaitingReady = false;
+
+  function beginCompeteInspectionCountdown(){
+    const badge = document.getElementById('competeInspectionBadge');
+    const { seconds } = inspectionSettings();
+    competeInspectionAwaitingReady = false;
+    document.getElementById('competeReadyBtn').style.display = 'none';
+    badge.style.display = '';
+    competeInspectionStartTs = performance.now();
+    function tick(){
+      const elapsed = (performance.now() - competeInspectionStartTs) / 1000;
+      const remaining = seconds - elapsed;
+      if(remaining > 0){
+        badge.textContent = 'Inspection: ' + Math.ceil(remaining) + 's';
+        badge.className = 'inspection-badge';
+      } else if(remaining > -2){
+        badge.textContent = 'Inspection over — +2 if you start now';
+        badge.className = 'inspection-badge warn';
+      } else {
+        badge.textContent = 'Inspection overrun — this solve will be a DNF';
+        badge.className = 'inspection-badge danger';
+      }
+      if(competePhase !== 'running'){
+        competeInspectionRaf = requestAnimationFrame(tick);
+      }
+    }
+    competeInspectionRaf = requestAnimationFrame(tick);
+  }
+
+  function startCompeteInspectionIfEnabled(){
+    if(competeInspectionRaf) cancelAnimationFrame(competeInspectionRaf);
+    competeInspectionRaf = null;
+    const badge = document.getElementById('competeInspectionBadge');
+    const readyBtn = document.getElementById('competeReadyBtn');
+    const { enabled } = inspectionSettings();
+    competeInspectionPenaltyPending = 'none';
+    if(!enabled){
+      competeInspectionAwaitingReady = false;
+      badge.style.display = 'none';
+      readyBtn.style.display = 'none';
+      return;
+    }
+    competeInspectionAwaitingReady = true;
+    badge.style.display = 'none';
+    readyBtn.style.display = '';
+    document.getElementById('competeHint').textContent = 'Press Ready when you want to start inspecting the scramble';
+  }
+  document.getElementById('competeReadyBtn').addEventListener('click', () => {
+    beginCompeteInspectionCountdown();
+    document.getElementById('competeHint').textContent = 'Hold space (or press and hold here) to start';
+  });
+
+  function stopCompeteInspectionTick(){
+    if(competeInspectionRaf) cancelAnimationFrame(competeInspectionRaf);
+    competeInspectionRaf = null;
+    document.getElementById('competeInspectionBadge').style.display = 'none';
+  }
+
+  function competeStartRun(){
+    const { enabled, seconds } = inspectionSettings();
+    if(enabled){
+      const elapsed = (performance.now() - competeInspectionStartTs) / 1000;
+      competeInspectionPenaltyPending = elapsed > seconds + 2 ? 'DNF' : elapsed > seconds ? '+2' : 'none';
+    } else {
+      competeInspectionPenaltyPending = 'none';
+    }
+    stopCompeteInspectionTick();
+    competePhase = 'running';
+    const disp = document.getElementById('competeDisplay');
+    disp.classList.remove('armed');
+    disp.classList.add('running');
+    competeResetSegs();
+    document.getElementById('competeHint').textContent = 'Press space to stop';
+    competeRunStart = performance.now();
+    function tick(){
+      const elapsed = performance.now() - competeRunStart;
+      disp.textContent = fmt(elapsed);
+      competeRunRaf = requestAnimationFrame(tick);
+    }
+    competeRunRaf = requestAnimationFrame(tick);
+  }
+
+  function competeStopRun(){
+    cancelAnimationFrame(competeRunRaf);
+    let elapsed = performance.now() - competeRunStart;
+    if(competeInspectionPenaltyPending === '+2') elapsed += 2000;
+    else if(competeInspectionPenaltyPending === 'DNF') elapsed = Infinity;
+    const disp = document.getElementById('competeDisplay');
+    disp.classList.remove('running');
+    disp.textContent = fmt(elapsed);
+    competePhase = 'idle';
+    document.getElementById('competeHint').textContent = 'Hold space (or press and hold here) to start';
+    return elapsed;
+  }
+
+  const SPECTATE_ANIM_MS = 2200;
+
+  async function animateSpectatedBot(scrambleStr, botMs){
+    const scrambleMoves = scrambleStr.split(' ');
+    competeEngine.resetCube();
+    await competeEngine.playSequence(scrambleMoves, 90);
+    const solveMoves = competeEngine.invertAlg(scrambleMoves);
+    const perMove = SPECTATE_ANIM_MS / solveMoves.length;
+    const botDisplay = document.getElementById('botTimerDisplay');
+    const start = performance.now();
+    let ticking = true;
+    function tick(now){
+      if(!ticking) return;
+      const realElapsed = Math.min(now - start, SPECTATE_ANIM_MS);
+      const scaledElapsed = (realElapsed / SPECTATE_ANIM_MS) * botMs;
+      botDisplay.textContent = fmt(scaledElapsed);
+      if(realElapsed < SPECTATE_ANIM_MS) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    await competeEngine.playSequence(solveMoves, perMove);
+    ticking = false;
+    botDisplay.textContent = fmt(botMs);
+  }
+
+  function renderRoundDots(){
+    const dots = document.getElementById('roundDots');
+    dots.innerHTML = '';
+    for(let i = 0; i < match.totalRounds; i++){
+      const d = document.createElement('span');
+      d.className = 'dot' + (i < match.round ? ' done' : i === match.round ? ' current' : '');
+      dots.appendChild(d);
+    }
+  }
+
+  function nextRound(){
+    renderRoundDots();
+    const scramble = genScramble();
+    match.scrambles[match.round] = scramble;
+    match.roundBotTimes = {};
+    match.roundResultShown = false;
+    spectateAnimating = false;
+    match.bots.forEach(b => {
+      match.roundBotTimes[b.id] = b.avg * 1000 * (0.85 + Math.random() * 0.3);
+    });
+    document.getElementById('competeScramble').textContent = scramble;
+    document.getElementById('turnBanner').textContent = 'Round ' + (match.round + 1) + ' of ' + match.totalRounds + ' — your turn';
+    document.getElementById('roundResult').style.display = 'none';
+    document.getElementById('playerTurnArea').style.display = '';
+    document.getElementById('botTurnArea').style.display = 'none';
+    competePhase = 'idle';
+    const disp = document.getElementById('competeDisplay');
+    disp.textContent = '0.00';
+    disp.className = 'timer-display';
+    competeResetSegs();
+    document.getElementById('competeHint').textContent = 'Hold space (or press and hold here) to start';
+    startCompeteInspectionIfEnabled();
+  }
+
+  function showRoundResult(playerMs){
+    if(match.roundResultShown) return;
+    match.roundResultShown = true;
+    const panel = document.getElementById('roundResult');
+    panel.style.display = '';
+    match.bots.forEach(b => {
+      match.allBotTimes[b.id].push(match.roundBotTimes[b.id]);
+    });
+    const rows = match.bots.map(b => ({ name: b.name, ms: match.roundBotTimes[b.id] }));
+    rows.push({ name: 'You', ms: playerMs, isPlayer: true });
+    rows.sort((a, b) => a.ms - b.ms);
+    const lines = rows.map((r, i) =>
+      '<div class="rr-line' + (r.isPlayer ? ' you' : '') + (i === 0 ? ' first' : '') + '">' +
+      (i + 1) + '. ' + r.name + ' — ' + fmt(r.ms) +
+      '</div>'
+    ).join('');
+    const playerPlace = rows.findIndex(r => r.isPlayer) + 1;
+    panel.innerHTML =
+      lines +
+      '<div class="rr-winner ' + (playerPlace === 1 ? 'win' : 'loss') + '">' +
+      (playerPlace === 1 ? 'You topped this round!' : 'You placed ' + playerPlace + ' of ' + rows.length + ' this round') +
+      '</div>' +
+      '<button id="nextRoundBtn">' + (match.round + 1 < match.totalRounds ? 'Next round' : 'See match result') + '</button>';
+    document.getElementById('nextRoundBtn').addEventListener('click', () => {
+      match.round++;
+      if(match.round >= match.totalRounds) finishMatch();
+      else nextRound();
+    });
+  }
+
+  function resolveRound(){
+    document.getElementById('botTurnArea').style.display = 'none';
+    showRoundResult(match.pendingPlayerMs);
+  }
+
+  let spectateGen = 0;
+  let spectateAnimating = false;
+
+  function buildSpectateChips(){
+    const container = document.getElementById('spectateChips');
+    container.innerHTML = '';
+    match.bots.forEach(b => {
+      const btn = document.createElement('button');
+      btn.className = 'spectate-chip';
+      btn.textContent = b.name;
+      btn.addEventListener('click', async () => {
+        if(spectateAnimating) return; // avoid corrupting the shared 3D cube with overlapping animations
+        spectateAnimating = true;
+        const myGen = ++spectateGen;
+        document.querySelectorAll('.spectate-chip').forEach(c => c.classList.remove('picked'));
+        btn.classList.add('picked');
+        document.getElementById('spectatePrompt').textContent = 'Watching ' + b.name + ' solve…';
+        document.getElementById('competeCubeWrap').style.display = '';
+        document.getElementById('botTimerDisplay').style.display = '';
+        document.getElementById('botTimerDisplay').textContent = '0.00';
+        await animateSpectatedBot(match.scrambles[match.round], match.roundBotTimes[b.id]);
+        spectateAnimating = false;
+        if(myGen === spectateGen) resolveRound();
+      });
+      container.appendChild(btn);
+    });
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'spectate-chip skip';
+    skipBtn.textContent = 'Skip to results';
+    skipBtn.addEventListener('click', () => {
+      spectateGen++; // invalidates any in-flight spectate animation's callback
+      resolveRound();
+    });
+    container.appendChild(skipBtn);
+  }
+
+  async function finishPlayerTurn(){
+    const playerMs = competeStopRun();
+    match.playerTimes.push(playerMs);
+    match.pendingPlayerMs = playerMs;
+    document.getElementById('playerTurnArea').style.display = 'none';
+    document.getElementById('turnBanner').textContent = 'Round ' + (match.round + 1) + ' of ' + match.totalRounds + ' — everyone else is solving';
+    document.getElementById('botTurnArea').style.display = '';
+    document.getElementById('spectatePrompt').textContent = 'Choose who to spectate:';
+    document.getElementById('competeCubeWrap').style.display = 'none';
+    document.getElementById('botTimerDisplay').style.display = 'none';
+    buildSpectateChips();
+  }
+
+  const LEADERBOARD_KEY = 'cubeTimerLeaderboard';
+
+  function loadLeaderboard(){
+    try{
+      const raw = window.localStorage.getItem(LEADERBOARD_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(err){
+      return [];
+    }
+  }
+
+  function saveLeaderboardEntry(entry){
+    try{
+      const list = loadLeaderboard();
+      list.unshift(entry);
+      window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(list.slice(0, 30)));
+    }catch(err){ /* ignore */ }
+  }
+
+  function renderLeaderboard(){
+    const container = document.getElementById('leaderboardList');
+    const list = loadLeaderboard();
+    if(!list.length){
+      container.innerHTML = '<div class="empty">No matches yet — finish one to start building your record.</div>';
+      return;
+    }
+    container.innerHTML = list.map(entry => {
+      const dateStr = new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return '<div class="lb-row' + (entry.place === 1 ? ' first' : '') + '">' +
+        '<span class="lb-place">#' + entry.place + '</span>' +
+        '<span class="lb-main">' + entry.rounds + ' rounds vs ' + entry.opponents.join(', ') + ' — your avg ' + fmt(entry.playerAvg) + ' (placed ' + entry.place + ' of ' + entry.totalEntrants + ')</span>' +
+        '<span class="lb-date">' + dateStr + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function finishMatch(){
+    document.getElementById('competeMatch').style.display = 'none';
+    const summary = document.getElementById('matchSummary');
+    summary.style.display = '';
+    const avgLabel = match.totalRounds === 5 ? 'Ao5' : 'Avg';
+    const entries = match.bots.map(b => ({ name: b.name, avgv: computeAvg(match.allBotTimes[b.id]), times: match.allBotTimes[b.id] }));
+    entries.push({ name: 'You', avgv: computeAvg(match.playerTimes), times: match.playerTimes, isPlayer: true });
+    entries.sort((a, b) => a.avgv - b.avgv);
+    const playerPlace = entries.findIndex(e => e.isPlayer) + 1;
+    const lines = entries.map((e, i) =>
+      '<div class="ms-line' + (e.isPlayer ? '' : '') + '">' +
+      (i + 1) + '. ' + e.name + ' — ' + avgLabel + ' ' + fmt(e.avgv) + ' &nbsp;(' + e.times.map(fmt).join(', ') + ')' +
+      '</div>'
+    ).join('');
+    summary.innerHTML =
+      '<div class="ms-title ' + (playerPlace === 1 ? 'win' : 'loss') + '">' +
+      (playerPlace === 1 ? 'You won the match!' : 'You placed ' + playerPlace + ' of ' + entries.length) +
+      '</div>' + lines +
+      '<button id="rematchBtn">Back to matchmaking</button>';
+    document.getElementById('rematchBtn').addEventListener('click', () => {
+      summary.style.display = 'none';
+      document.getElementById('competeSetup').style.display = '';
+      populateBotPreview();
+      renderLeaderboard();
+    });
+    saveLeaderboardEntry({
+      date: new Date().toISOString(),
+      rounds: match.totalRounds,
+      opponents: match.bots.map(b => b.name),
+      playerAvg: computeAvg(match.playerTimes),
+      place: playerPlace,
+      totalEntrants: entries.length
+    });
+    renderLeaderboard();
+  }
+
+  document.getElementById('startMatchBtn').addEventListener('click', () => {
+    const target = parseFloat(document.getElementById('botTargetInput').value) || 20;
+    const baseAvgSec = Math.max(2, target);
+    const roundsRaw = parseInt(document.getElementById('roundsInput').value, 10) || 5;
+    const totalRounds = Math.max(1, Math.min(20, roundsRaw));
+    const bots = generateBotRoster(baseAvgSec);
+    match = { bots, round: 0, totalRounds, playerTimes: [], allBotTimes: {}, scrambles: [], roundBotTimes: null, pendingPlayerMs: 0 };
+    bots.forEach(b => { match.allBotTimes[b.id] = []; });
+    if(!competeEngine && window.createCubeEngine){
+      competeEngine = window.createCubeEngine(document.getElementById('competeCubeCanvas'));
+    }
+    document.getElementById('competeSetup').style.display = 'none';
+    document.getElementById('matchSummary').style.display = 'none';
+    document.getElementById('competeMatch').style.display = '';
+    nextRound();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.code !== 'Space') return;
+    if(document.getElementById('competeView').style.display === 'none') return;
+    if(document.getElementById('playerTurnArea').style.display === 'none') return;
+    e.preventDefault();
+    if(e.repeat) return;
+    if(competePhase === 'running') finishPlayerTurn();
+    else if(competePhase === 'idle') competeStartCharging();
+  });
+  document.addEventListener('keyup', (e) => {
+    if(e.code !== 'Space') return;
+    if(document.getElementById('competeView').style.display === 'none') return;
+    if(document.getElementById('playerTurnArea').style.display === 'none') return;
+    e.preventDefault();
+    if(competePhase === 'armed') competeStartRun();
+    else if(competePhase === 'charging') competeCancelCharging();
+  });
+  document.getElementById('competeStage').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if(competePhase === 'running') finishPlayerTurn();
+    else if(competePhase === 'idle') competeStartCharging();
+  }, { passive: false });
+  document.getElementById('competeStage').addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if(competePhase === 'armed') competeStartRun();
+    else if(competePhase === 'charging') competeCancelCharging();
+  }, { passive: false });
+
+  // ---- Narration voice ----
+  function scoreVoice(v){
+    const name = (v.name || '').toLowerCase();
+    let score = 0;
+    if(name.includes('natural')) score += 6;
+    if(name.includes('enhanced')) score += 5;
+    if(name.includes('premium')) score += 5;
+    if(name.includes('neural')) score += 5;
+    if(name.includes('online')) score += 2;
+    if(name.includes('samantha') || name.includes('aria') || name.includes('jenny') || name.includes('google us english')) score += 3;
+    if(v.lang && v.lang.startsWith('en')) score += 2;
+    if(v.localService === false) score += 1;
+    return score;
+  }
+
+  function populateVoiceSelect(){
+    const select = document.getElementById('voiceSelect');
+    if(!select || !window.speechSynthesis) return;
+    const voices = window.speechSynthesis.getVoices().slice().sort((a,b) => scoreVoice(b) - scoreVoice(a));
+    if(!voices.length){
+      select.innerHTML = '<option value="">No voices available yet…</option>';
+      return;
+    }
+    let current = null;
+    try{ current = window.localStorage.getItem('cubeTimerVoiceName'); }catch(err){}
+    select.innerHTML = '';
+    voices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name + ' (' + v.lang + ')';
+      if(v.name === current) opt.selected = true;
+      select.appendChild(opt);
+    });
+    if(!current){
+      select.value = voices[0].name;
+      try{ window.localStorage.setItem('cubeTimerVoiceName', voices[0].name); }catch(err){}
+    }
+  }
+  if(window.speechSynthesis){
+    populateVoiceSelect();
+    window.speechSynthesis.onvoiceschanged = populateVoiceSelect;
+  }
+  const voiceSelectEl = document.getElementById('voiceSelect');
+  if(voiceSelectEl){
+    voiceSelectEl.addEventListener('change', (e) => {
+      try{ window.localStorage.setItem('cubeTimerVoiceName', e.target.value); }catch(err){}
+    });
+  }
+  function getSelectedVoice(){
+    if(!window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices();
+    let name = null;
+    try{ name = window.localStorage.getItem('cubeTimerVoiceName'); }catch(err){}
+    if(name){
+      const found = voices.find(v => v.name === name);
+      if(found) return found;
+    }
+    return voices.slice().sort((a,b) => scoreVoice(b) - scoreVoice(a))[0] || null;
+  }
+  function speak(text){
+    if(!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const sentences = (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s => s.trim()).filter(Boolean);
+    const v = getSelectedVoice();
+    let i = 0;
+    function speakNext(){
+      if(i >= sentences.length) return;
+      const u = new SpeechSynthesisUtterance(sentences[i]);
+      if(v) u.voice = v;
+      u.rate = 0.93;
+      u.pitch = 1.0;
+      u.onend = () => { i++; setTimeout(speakNext, 130); };
+      window.speechSynthesis.speak(u);
+    }
+    speakNext();
+  }
+  const testVoiceBtn = document.getElementById('testVoiceBtn');
+  if(testVoiceBtn){
+    testVoiceBtn.addEventListener('click', () => speak('This is what lesson narration will sound like. Hopefully a bit warmer than a default robotic voice.'));
+  }
+
+  // ---- Courses ----
+  const COURSES = [
+    {
+      id: 'notation',
+      title: 'Cube Notation & Basics',
+      description: 'The vocabulary every other course in this app (and every cubing resource online) assumes you already know.',
+      lessons: [
+        { title: 'The Six Letters', when: 'Read this before anything else in the app — every algorithm you will ever see, here or anywhere else, is written using these six letters.', text: 'Cube notation names each face by a single letter, always from whoever is holding the cube: U is Up, D is Down, L is Left, R is Right, F is Front, and B is Back. A letter by itself means "turn that face a quarter turn clockwise, looking straight at that face." So R means turn the right face clockwise as you look directly at it. Try the buttons in the Learn Algorithms tab to see each one turn a single face — that is all notation is really describing.', moves: ['U'] },
+        { title: 'Prime and Double Turns', when: 'You will see these symbols attached to nearly every letter in every algorithm you ever read — know them before attempting a single algorithm.', text: 'An apostrophe after a letter, written as R prime and shown as R with a small mark, means turn that face counterclockwise instead — the exact opposite direction of a plain R. A 2 after a letter, like R2, means a double turn, a half rotation of that face — turning it clockwise or counterclockwise gets you to the same place, since it is exactly halfway around. Together, these three forms — R, R prime, and R2 — cover every possible single-face turn.', moves: ["R'"] },
+        { title: 'Reading a Full Algorithm', when: 'Once you can read one move, reading a whole algorithm is just reading each move in order, left to right, one at a time.', text: 'An algorithm is simply a list of these moves performed in sequence. R U R prime U prime, one of the most common patterns in cubing, just means: turn right clockwise, then up clockwise, then right counterclockwise, then up counterclockwise, one after another. Nothing more mysterious than that — the skill in cubing is knowing which sequence to use when, and recognizing the situation that calls for it, which is exactly what the other courses in this app walk through.', moves: ['R','U',"R'","U'"] },
+        { title: 'Cube Anatomy', when: 'Useful background before you start any solving method, so the pieces described in other lessons make sense.', text: 'A 3x3 cube has three kinds of pieces. Centers sit in the middle of each face, never change their position relative to each other, and are what tells you which color belongs on which side. Edges have two stickers and sit between two centers. Corners have three stickers and sit where three faces meet. Solving a cube is really just returning every edge and corner to the position and orientation that matches the fixed centers around it.', moves: null }
+      ]
+    },
+    {
+      id: 'beginner',
+      title: 'Beginner Method',
+      description: 'The classic layer-by-layer approach — solve the cube one section at a time.',
+      lessons: [
+        { title: 'The White Cross', when: 'This is always the very first thing you do on a fresh scramble, before touching anything else.', text: 'Start by picking one face — white is traditional. Find the four edge pieces that have white on them, and place each one so its white sticker faces up and the other color lines up with the matching center piece on the side. This part is intuitive rather than algorithmic: there is no fixed sequence, you are just maneuvering pieces into place a little at a time. Take it slow here, since a solid cross makes everything after it much easier.', moves: null },
+        { title: 'First Layer Corners', when: 'Do this once your white cross is complete and its edges line up with the center colors beside them — look for a white corner sitting anywhere in the top layer.', text: 'Find a white corner piece in the top layer and position it directly above the slot it belongs in, judging by its two non-white colors matching the two side centers there. Then repeat this sequence — right, up, right prime, up prime — until the corner pops down into place correctly. If one repetition doesn\'t seat it, just keep repeating; it will cycle through positions until it drops in the right way. This four-move pattern is often called the sexy move, and you will see it again and again in cubing.', moves: ['R','U',"R'","U'"] },
+        { title: 'Second Layer Edges', when: 'Move on to this right after all four first-layer corners are solved, and before you flip the cube over to work on the last layer.', text: 'Find a top-layer edge piece that has no yellow on it at all — that is how you know it belongs in the middle layer, not the top. Line it up above the slot matching its front-facing color, then depending on which direction it needs to travel, use one of two mirror-image algorithms. Here is the version for inserting to the right: up, right, up prime, right prime, up prime, F prime, up, F. If a slot is empty but you can\'t find a matching edge in the top layer, one might already be lodged in the wrong middle slot — pop it back out first by inserting any mismatched top-layer piece into that spot, then continue.', moves: ['U','R',"U'","R'","U'","F'",'U','F'] },
+        { title: 'Yellow Cross', when: 'Do this as the very first step after the first two layers are complete and you\'ve turned the cube so yellow faces up.', text: 'Look at the top face: most of the time the yellow stickers will form a dot, an L-shape, or a straight line — rarely a full cross right away. This algorithm turns whatever shape you have into a complete yellow cross: F, R, U, R prime, U prime, F prime. Starting from a dot, run it once to get a line or L-shape, then reposition the cube and run it again to finish the cross — you may need it two or three times depending on your starting pattern.', moves: ['F','R','U',"R'","U'","F'"] },
+        { title: 'Orient the Last Layer Corners', when: 'Use this once your yellow cross is complete but the four corners on top still show a mix of colors instead of solid yellow.', text: 'Every corner on top needs its yellow sticker facing up, even though the corners might land in the wrong position for now — that gets fixed in the very next step, so don\'t worry about position yet, only color. This algorithm, called Sune, twists corners into orientation: right, up, right prime, up, right, up two, right prime. Run it, then rotate just the top layer to bring an unsolved corner to the front-right, and repeat until all four show yellow on top.', moves: ['R','U',"R'",'U','R','U2',"R'"] },
+        { title: 'Permute the Last Layer', when: 'This is the final step — reach for it once every sticker on top is yellow, but the pieces are still sitting in the wrong spots relative to the layers below.', text: 'Compare each top-layer piece to the colors on the sides beneath it. If none of the four corners match their sides yet, run the algorithm once from any angle first to create a match, then rotate the top layer so a matching corner sits at the back-left before continuing. This is the T-Perm, one of the most famous algorithms in cubing, and it swaps two corners and two edges at once: right, up, right prime, up prime, right prime, F, right two, up prime, right prime, up prime, right, up, right prime, F prime. Depending on your exact case you may eventually need a different perm, but T-Perm is a great one to know first since it covers a very common scenario.', moves: ['R','U',"R'","U'","R'",'F','R2',"U'","R'","U'",'R','U',"R'",'F'] }
+      ]
+    },
+    {
+      id: 'f2l',
+      title: 'F2L (Intuitive)',
+      description: 'First Two Layers — the technique speedsolvers use to blow past the beginner method.',
+      lessons: [
+        { title: 'What Is F2L?', when: 'Reach for F2L instead of the separate beginner corners-and-edges steps once you\'re comfortable with the layer-by-layer method and want to start solving faster by combining steps.', text: 'F2L stands for First Two Layers. Instead of solving the cross, then corners, then edges as separate steps, you pair up a corner and its matching edge while they are still in the top layer, then insert them together into their slot in one motion. It is intuitive rather than purely algorithmic — the same handful of finger patterns get reused in many situations once you recognize them.', moves: null },
+        { title: 'Example: Basic Pair Insertion', when: 'Use this when a corner and its matching edge are already separated from each other in the top layer, with an empty slot waiting for them below.', text: 'Here is the single most common F2L pattern in all of speedcubing, often nicknamed the sexy move: right, up, right prime, up prime. It shows up constantly for connecting a pair and dropping it into an empty slot — watch how the corner and edge relate to each other before turning, since recognizing this exact setup is most of the skill.', moves: ['R','U',"R'","U'"] },
+        { title: 'Example: Freeing a Stuck Corner', when: 'Reach for this when a corner is already sitting in its slot but blocking a piece you need, or when a piece needs to be temporarily popped back out before it can be paired correctly.', text: 'This four-move pattern, the sledgehammer, is a common tool for exactly that situation: right prime, F, right, F prime. It is especially useful when a corner looks "done" from one angle but is actually blocking the edge that belongs with it — this move extracts and reseats things cleanly.', moves: ["R'",'F','R',"F'"] },
+        { title: 'Recognizing Your Case Before You Move', when: 'Practice this mental step before every single pairing, even ones you feel confident about — it is what separates fast, confident F2L from slow, hesitant F2L.', text: 'Before turning anything, look at where the corner and edge actually are relative to each other and to the slot: are they already connected, or separate? Is the corner\'s colored sticker facing up, out, or down? That quick read is what tells you whether the sexy move, the sledgehammer, or some other approach is the right tool — turning first and figuring it out as you go is exactly the habit that keeps beginners slow at F2L.', moves: null },
+        { title: 'Practice Tip', when: null, text: 'F2L is learned by pattern recognition more than memorization. Solve slowly and watch what each piece does during the sexy move and the sledgehammer — once you can predict where a piece will end up before you turn, and recognize which of the two situations you are looking at before you move, you are well on your way to full F2L fluency.', moves: null }
+      ]
+    },
+    {
+      id: '4x4',
+      title: '4x4 Basics',
+      description: 'How the reduction method turns a 4x4 into a 3x3 you already know how to solve.',
+      lessons: [
+        { title: "What's Different About 4x4", when: 'Read this before attempting your first 4x4 solve, since the overall strategy is different from the 3x3 methods you already know.', text: 'A 4x4 has no fixed center pieces and an even number of layers, which changes the puzzle in two big ways: centers need to be built rather than being fixed reference points, and a couple of situations can come up on a 4x4 that are mathematically impossible on a real 3x3. The heads-up: this course is explained in words rather than shown on the 3D cube, since the cube demo in this app only models a 3x3.', moves: null },
+        { title: 'Step One: Pair the Centers', when: 'This is always the very first stage of a 4x4 solve, before you touch any edges at all.', text: 'Group each color into a solid two-by-two block of center pieces, one color at a time. There is no fixed algorithm for this — it is mostly intuitive maneuvering, similar to the white cross on a 3x3, just applied to bigger chunks of the puzzle. You will know you are done when all six faces show a complete two-by-two square of a single color in the middle.', moves: null },
+        { title: 'Step Two: Pair the Edges', when: 'Do this right after all six centers are solid blocks of color, and before attempting to solve any layers.', text: 'Each pair of matching edge pieces gets joined into a single wide edge, so the cube starts behaving like it has normal 3x3-style edges instead of split ones. This step usually takes the most practice to get efficient at, and it is normal for it to feel like the hardest part of a 4x4 solve for a while.', moves: null },
+        { title: 'Step Three: Solve It Like a 3x3', when: 'Switch to this the moment every center is paired and every edge is paired — do not wait, since trying to apply 3x3 techniques before reduction is complete will not work.', text: 'Once the centers and edges are paired, the 4x4 behaves almost exactly like the 3x3 skills you already know from the Beginner Method or F2L — same cross, corners, and last-layer ideas, just on a bigger cube.', moves: null },
+        { title: 'Parity Cases', when: 'Only deal with this if, after finishing reduction and normal 3x3-style solving, you hit a situation that looks unsolvable — that is your signal it is a parity case, not a mistake you made.', text: 'Occasionally, after reduction, you will hit a situation that cannot happen on a real 3x3 — one edge appears flipped with no matching partner, or two pieces need swapping in a way normal 3x3 algorithms cannot fix. These are called parity cases, and they need their own specific algorithms to resolve. They are common enough to expect on nearly every 4x4 solve, so it is worth looking up a dedicated 4x4 parity algorithm reference once you reach this stage.', moves: null }
+      ]
+    },
+    {
+      id: '2x2',
+      title: '2x2 Speedsolving',
+      description: 'A pocket cube has no edges or centers to worry about — just corners, which makes it a great low-pressure entry into speedsolving.',
+      lessons: [
+        { title: "What's Different About 2x2", when: 'Read this before your first timed 2x2 solve, especially if you already know 3x3 — the skills transfer, but the puzzle itself is simpler in an important way.', text: 'A 2x2 has only corner pieces — no edges, no fixed centers. Because there is nothing to align a face against, you can freely rotate the whole cube to treat any layer as the "top" without it counting as a real move, which is why fast 2x2 solves often look like almost no turning is happening at all. The overall shape of a solve is the same idea as 3x3 though: solve one layer, then orient and position the last layer.', moves: null },
+        { title: 'Solve One Layer Intuitively', when: 'This is always the first stage of a 2x2 solve, exactly like picking a starting face on 3x3.', text: 'Pick any face and build a complete solved layer of four corners on it, the same intuitive way you would build a 3x3 cross and its corners together. Since there are no edges to slow you down, most solvers find this goes noticeably faster than the equivalent 3x3 stage.', moves: null },
+        { title: 'Orient the Last Layer', when: 'Use this once your first layer is complete and the four corners on top all show the wrong color facing up.', text: 'Just like on 3x3, Sune twists corners into orientation without worrying about their position yet: right, up, right prime, up, right, up two, right prime. Its mirror image, Anti-Sune, handles the opposite twisting direction: right, up two, right prime, up prime, right, up prime, right prime. Between the two you can orient any last-layer case.', moves: ['R','U',"R'",'U','R','U2',"R'"] },
+        { title: 'Permute the Last Layer', when: 'This is the final step — once every sticker on top matches, but the corners are still in the wrong positions relative to each other.', text: 'This step swaps corners around until the whole cube lines up, similar in spirit to the beginner method\'s last permutation step on 3x3. The exact algorithms used here are specific to 2x2 rather than borrowed from 3x3, so this app will not show a specific one on the 3D cube — but expect it to be a short, memorable sequence once you look one up, since with only corners to manage, 2x2 last-layer algorithms tend to be shorter than their 3x3 equivalents.', moves: null }
+      ]
+    },
+    {
+      id: 'tips',
+      title: 'Speedsolving Tips & Practice',
+      description: 'The non-algorithmic side of getting faster — how you practice matters as much as what you memorize.',
+      lessons: [
+        { title: 'Finger Tricks', when: 'Start paying attention to this as soon as you know the beginner method — it matters long before you are trying to go fast.', text: 'A finger trick is just using a specific finger for a specific turn instead of regripping the whole cube every time — for example, using your right index finger to push U moves and your right ring finger to pull R moves, without your hand ever leaving the cube. The less you regrip, the less time you lose between moves, and the pattern becomes automatic surprisingly quickly with practice.', moves: null },
+        { title: 'Look-Ahead', when: 'Practice this once you are comfortable enough with a technique that you are not thinking hard about the moves themselves anymore.', text: 'Look-ahead means recognizing your next piece or case while your hands are still finishing the current move, instead of finishing a move and then pausing to figure out what comes next. It is the single biggest jump in speed for most solvers, and the coach feature in this app\'s Timer tab is specifically built to help you spot where in your own solves those pauses are happening.', moves: null },
+        { title: 'Lubricant and Tensioning', when: 'Worth knowing about once you are practicing regularly, even though it has nothing to do with algorithms.', text: 'Speedcubes are typically tensioned (how tightly the pieces are held together) and lubricated (to reduce friction) to make them turn faster and more smoothly than a cube straight out of the box. A cube that is too loose can pop pieces out mid-turn; one that is too tight fights your fingers. Most dedicated speedcubes have adjustable tensioning built in — small, repeatable adjustments are better than big ones.', moves: null },
+        { title: 'How to Practice', when: 'Apply this mindset any time you sit down to practice, not just when learning something brand new.', text: 'Untimed, deliberate practice — solving slowly and correctly on purpose — builds the pattern recognition and finger tricks that timed solving alone does not. Mix in timed sessions to track progress, but do not let the clock pressure you into sloppy habits while you are still learning something new. The inspection-time setting and Compete tab in this app exist to let you practice under realistic pressure once you are ready for it.', moves: null }
+      ]
+    }
+  ];
+
+  let coursesEngine = null;
+  let currentCourse = null;
+  let currentLessonIndex = 0;
+
+  function renderCourseList(){
+    const container = document.getElementById('courseListView');
+    if(container.dataset.built) return;
+    container.dataset.built = '1';
+    COURSES.forEach(course => {
+      const card = document.createElement('div');
+      card.className = 'course-card';
+      card.innerHTML =
+        '<div class="course-card-title">' + course.title + '</div>' +
+        '<div class="course-card-desc">' + course.description + '</div>' +
+        '<div class="course-card-meta">' + course.lessons.length + ' lessons</div>' +
+        '<button class="btn">Start course</button>';
+      card.querySelector('button').addEventListener('click', () => startCourse(course));
+      container.appendChild(card);
+    });
+  }
+
+  const NOTATION_LEGEND = [
+    { key: 'U', desc: 'Up face' },
+    { key: 'D', desc: 'Down face' },
+    { key: 'L', desc: 'Left face' },
+    { key: 'R', desc: 'Right face' },
+    { key: 'F', desc: 'Front face' },
+    { key: 'B', desc: 'Back face' },
+    { key: "R'", desc: 'Counterclockwise (prime)' },
+    { key: 'R2', desc: 'Double turn (180°)' }
+  ];
+
+  function renderReferenceView(){
+    const container = document.getElementById('referenceView');
+    if(container.dataset.built) return;
+    container.dataset.built = '1';
+
+    const legend = document.getElementById('notationLegend');
+    legend.innerHTML = NOTATION_LEGEND.map(l =>
+      '<div class="nl-row"><span class="nl-key">' + l.key + '</span><span class="nl-desc">' + l.desc + '</span></div>'
+    ).join('');
+
+    const list = document.getElementById('refAlgList');
+    COURSES.forEach(course => {
+      const withMoves = course.lessons.filter(l => l.moves);
+      if(!withMoves.length) return;
+      const heading = document.createElement('div');
+      heading.className = 'ref-course-title';
+      heading.textContent = course.title;
+      list.appendChild(heading);
+      withMoves.forEach(lesson => {
+        const row = document.createElement('div');
+        row.className = 'ref-row';
+        row.innerHTML =
+          '<span class="ref-name">' + lesson.title + '</span>' +
+          '<span class="ref-notation">' + lesson.moves.join(' ') + '</span>';
+        list.appendChild(row);
+      });
+    });
+  }
+
+  const subTabCourses = document.getElementById('subTabCourses');
+  const subTabReference = document.getElementById('subTabReference');
+  const coursesGroupEl = document.getElementById('coursesGroup');
+  const referenceViewEl = document.getElementById('referenceView');
+  subTabCourses.addEventListener('click', () => {
+    subTabCourses.classList.add('active');
+    subTabReference.classList.remove('active');
+    coursesGroupEl.style.display = '';
+    referenceViewEl.style.display = 'none';
+  });
+  subTabReference.addEventListener('click', () => {
+    subTabReference.classList.add('active');
+    subTabCourses.classList.remove('active');
+    coursesGroupEl.style.display = 'none';
+    referenceViewEl.style.display = '';
+    renderReferenceView();
+  });
+
+  function startCourse(course){
+    currentCourse = course;
+    currentLessonIndex = 0;
+    document.getElementById('courseListView').style.display = 'none';
+    document.getElementById('lessonView').style.display = '';
+    showLesson();
+  }
+
+  function resetLessonCube(){
+    if(!coursesEngine) return;
+    coursesEngine.resetCube();
+    document.getElementById('lessonCubeLabel').textContent = 'Cube is solved — press Play algorithm to watch it.';
+  }
+
+  function showLesson(){
+    const lesson = currentCourse.lessons[currentLessonIndex];
+    document.getElementById('lessonProgress').textContent =
+      'Lesson ' + (currentLessonIndex + 1) + ' of ' + currentCourse.lessons.length + ' — ' + currentCourse.title;
+    document.getElementById('lessonTitle').textContent = lesson.title;
+    const whenEl = document.getElementById('lessonWhen');
+    if(lesson.when){
+      whenEl.textContent = lesson.when;
+      whenEl.style.display = '';
+    } else {
+      whenEl.style.display = 'none';
+    }
+    document.getElementById('lessonText').textContent = lesson.text;
+    const notationEl = document.getElementById('lessonNotation');
+    if(lesson.moves){
+      notationEl.textContent = lesson.moves.join(' ');
+      notationEl.style.display = '';
+    } else {
+      notationEl.style.display = 'none';
+    }
+    document.getElementById('prevLessonBtn').disabled = currentLessonIndex === 0;
+    document.getElementById('nextLessonBtn').textContent =
+      currentLessonIndex === currentCourse.lessons.length - 1 ? 'Finish course' : 'Next ›';
+
+    const demoWrap = document.getElementById('lessonCubeWrapContainer');
+    const playDemoBtn = document.getElementById('playDemoBtn');
+    const label = document.getElementById('lessonCubeLabel');
+    if(lesson.moves){
+      demoWrap.style.display = '';
+      playDemoBtn.style.display = '';
+      playDemoBtn.textContent = 'Play algorithm';
+      playDemoBtn.disabled = false;
+      label.style.display = '';
+      if(!coursesEngine && window.createCubeEngine){
+        coursesEngine = window.createCubeEngine(document.getElementById('lessonCubeCanvas'));
+      }
+      resetLessonCube();
+    } else {
+      demoWrap.style.display = 'none';
+      playDemoBtn.style.display = 'none';
+      label.style.display = 'none';
+    }
+    speak((lesson.when ? lesson.when + ' ' : '') + lesson.text);
+  }
+
+  document.getElementById('playNarrationBtn').addEventListener('click', () => {
+    if(!currentCourse) return;
+    const lesson = currentCourse.lessons[currentLessonIndex];
+    speak((lesson.when ? lesson.when + ' ' : '') + lesson.text);
+  });
+
+  document.getElementById('playDemoBtn').addEventListener('click', async () => {
+    if(!coursesEngine || !currentCourse) return;
+    const lesson = currentCourse.lessons[currentLessonIndex];
+    const btn = document.getElementById('playDemoBtn');
+    const label = document.getElementById('lessonCubeLabel');
+    btn.disabled = true;
+    resetLessonCube();
+    label.textContent = 'Playing the algorithm…';
+    await coursesEngine.playSequence(lesson.moves, 500);
+    label.textContent = 'That\'s the algorithm — press Play algorithm to watch it again.';
+    btn.disabled = false;
+  });
+
+  document.getElementById('prevLessonBtn').addEventListener('click', () => {
+    if(currentLessonIndex > 0){
+      currentLessonIndex--;
+      showLesson();
+    }
+  });
+  document.getElementById('nextLessonBtn').addEventListener('click', () => {
+    if(currentLessonIndex < currentCourse.lessons.length - 1){
+      currentLessonIndex++;
+      showLesson();
+    } else {
+      document.getElementById('lessonView').style.display = 'none';
+      document.getElementById('courseListView').style.display = '';
+      if(window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+  });
+  document.getElementById('backToCoursesBtn').addEventListener('click', () => {
+    document.getElementById('lessonView').style.display = 'none';
+    document.getElementById('courseListView').style.display = '';
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+  });
+
+  // ---- Live Tournament ----
+  let tourPlayerId = null;
+  try{
+    tourPlayerId = window.localStorage.getItem('cubeTimerTourPlayerId');
+    if(!tourPlayerId){
+      tourPlayerId = 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      window.localStorage.setItem('cubeTimerTourPlayerId', tourPlayerId);
+    }
+  }catch(err){
+    tourPlayerId = 'p_' + Math.random().toString(36).slice(2);
+  }
+
+  let tourRoomCode = null;
+  let tourPollTimer = null;
+  let tourLastState = null;
+  let tourLastRenderedRound = 0;
+  let tourSubmittedThisRound = false;
+  let tourTimerPhase = 'idle';
+  let tourChargeRaf = null;
+  let tourRunStart = 0;
+  let tourRunRaf = null;
+
+  async function tourCall(action, extra){
+    const payload = Object.assign({ action, roomCode: tourRoomCode, playerId: tourPlayerId }, extra || {});
+    const resp = await fetch('/.netlify/functions/tournament', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    let data;
+    try{ data = await resp.json(); }catch(err){ data = {}; }
+    if(!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
+    return data;
+  }
+
+  function tourShowError(msg){
+    const el = document.getElementById('tourError');
+    el.textContent = msg;
+    el.style.display = '';
+    setTimeout(() => { el.style.display = 'none'; }, 5000);
+  }
+
+  function stopTourPolling(){
+    if(tourPollTimer) clearInterval(tourPollTimer);
+    tourPollTimer = null;
+  }
+  function startTourPolling(){
+    stopTourPolling();
+    tourPollTimer = setInterval(async () => {
+      if(!tourRoomCode) return;
+      try{
+        const room = await tourCall('getState');
+        tourLastState = room;
+        renderTourRoomState(room);
+      }catch(err){ /* transient network hiccup - try again next tick */ }
+    }, 2500);
+  }
+
+  function enterTourRoom(room){
+    document.getElementById('tournamentJoinView').style.display = 'none';
+    document.getElementById('tournamentRoomView').style.display = '';
+    tourLastState = room;
+    tourLastRenderedRound = 0;
+    renderTourRoomState(room);
+    startTourPolling();
+  }
+
+  document.getElementById('tourCreateBtn').addEventListener('click', async () => {
+    const name = document.getElementById('tourNameInput').value.trim() || 'Player';
+    const rounds = Math.max(1, Math.min(20, parseInt(document.getElementById('tourRoundsInput').value, 10) || 5));
+    try{
+      const room = await tourCall('create', { name, totalRounds: rounds });
+      tourRoomCode = room.code;
+      enterTourRoom(room);
+    }catch(err){
+      tourShowError("Couldn't create a tournament — " + err.message + ". Make sure the tournament function is deployed.");
+    }
+  });
+
+  document.getElementById('tourJoinBtn').addEventListener('click', async () => {
+    const name = document.getElementById('tourNameInput').value.trim() || 'Player';
+    const code = document.getElementById('tourJoinCodeInput').value.trim().toUpperCase();
+    if(!code){ tourShowError('Enter a room code.'); return; }
+    tourRoomCode = code;
+    try{
+      const room = await tourCall('join', { name });
+      enterTourRoom(room);
+    }catch(err){
+      tourRoomCode = null;
+      tourShowError("Couldn't join — " + err.message);
+    }
+  });
+
+  document.getElementById('tourLeaveBtn').addEventListener('click', () => {
+    stopTourPolling();
+    tourRoomCode = null;
+    tourLastState = null;
+    document.getElementById('tournamentRoomView').style.display = 'none';
+    document.getElementById('tournamentJoinView').style.display = '';
+  });
+
+  function renderTourLobbyList(room){
+    const list = document.getElementById('tourLobbyList');
+    const entries = Object.entries(room.participants);
+    list.innerHTML = entries.map(([pid, p]) =>
+      '<div class="tour-participant' + (p.ready ? ' ready' : '') + '">' +
+        '<span>' + p.name + (pid === room.hostId ? ' (host)' : '') + '</span>' +
+        '<span>' + (p.ready ? '✓ ready' : 'waiting') + '</span>' +
+      '</div>'
+    ).join('');
+    const me = room.participants[tourPlayerId];
+    document.getElementById('tourReadyBtn').textContent = (me && me.ready) ? 'Not ready' : "I'm ready";
+  }
+
+  document.getElementById('tourReadyBtn').addEventListener('click', async () => {
+    const me = tourLastState && tourLastState.participants[tourPlayerId];
+    const newReady = !(me && me.ready);
+    try{
+      const room = await tourCall('ready', { ready: newReady });
+      tourLastState = room;
+      renderTourRoomState(room);
+    }catch(err){ tourShowError(err.message); }
+  });
+
+  document.getElementById('tourStartRoundBtn').addEventListener('click', async () => {
+    const scramble = generateScramble();
+    try{
+      const room = await tourCall('startRound', { scramble });
+      tourLastState = room;
+      renderTourRoomState(room);
+    }catch(err){ tourShowError(err.message); }
+  });
+
+  document.getElementById('tourNextRoundBtn').addEventListener('click', async () => {
+    const room = tourLastState;
+    if(!room) return;
+    try{
+      if(room.round >= room.totalRounds){
+        const updated = await tourCall('endRound');
+        tourLastState = updated;
+        renderTourRoomState(updated);
+      } else {
+        const scramble = generateScramble();
+        const updated = await tourCall('startRound', { scramble });
+        tourLastState = updated;
+        renderTourRoomState(updated);
+      }
+    }catch(err){ tourShowError(err.message); }
+  });
+
+  function renderTourRoundDots(room){
+    const dots = document.getElementById('tourRoundDots');
+    dots.innerHTML = '';
+    for(let i = 0; i < room.totalRounds; i++){
+      const d = document.createElement('span');
+      d.className = 'dot' + (i < room.round - 1 ? ' done' : i === room.round - 1 ? ' current' : '');
+      dots.appendChild(d);
+    }
+  }
+
+  function resetTourSegs(){
+    document.querySelectorAll('#tourChargeBar .seg').forEach(s => { s.style.background = 'var(--surface-2)'; });
+  }
+  function resetTourTimerUI(){
+    tourTimerPhase = 'idle';
+    const disp = document.getElementById('tourDisplay');
+    disp.textContent = '0.00';
+    disp.className = 'timer-display';
+    resetTourSegs();
+    document.getElementById('tourHint').textContent = 'Hold space (or press and hold here) to start';
+    document.getElementById('tourStage').style.display = '';
+  }
+
+  function renderTourRoundArea(room, isHost){
+    if(room.round !== tourLastRenderedRound){
+      tourLastRenderedRound = room.round;
+      tourSubmittedThisRound = false;
+      resetTourTimerUI();
+    }
+    document.getElementById('tourRoundBanner').textContent = 'Round ' + room.round + ' of ' + room.totalRounds;
+    document.getElementById('tourScramble').textContent = room.currentScramble;
+    renderTourRoundDots(room);
+
+    const roundData = room.rounds[room.round - 1] || { times: {} };
+    const allIds = Object.keys(room.participants);
+    const doneCount = allIds.filter(id => roundData.times[id] !== undefined).length;
+
+    const standings = document.getElementById('tourLiveStandings');
+    standings.innerHTML = allIds.map(id => {
+      const p = room.participants[id];
+      const t = roundData.times[id];
+      return '<div class="tour-standing-row"><span>' + p.name + '</span><span>' +
+        (t !== undefined ? fmt(t) : '<span class="tour-waiting">solving…</span>') + '</span></div>';
+    }).join('') + '<div class="tour-progress">' + doneCount + ' / ' + allIds.length + ' finished this round</div>';
+
+    const nextBtn = document.getElementById('tourNextRoundBtn');
+    nextBtn.style.display = (isHost && doneCount === allIds.length) ? '' : 'none';
+    nextBtn.textContent = room.round >= room.totalRounds ? 'Finish tournament' : 'Next round';
+
+    document.getElementById('tourStage').style.display = tourSubmittedThisRound ? 'none' : '';
+  }
+
+  function renderTourFinalSummary(room){
+    const entries = Object.entries(room.participants).map(([pid, p]) => {
+      let total = 0, count = 0;
+      room.rounds.forEach(r => { if(r.times[pid] !== undefined){ total += r.times[pid]; count++; } });
+      return { name: p.name, avg: count ? total / count : Infinity, count };
+    });
+    entries.sort((a, b) => a.avg - b.avg);
+    const summary = document.getElementById('tourFinalSummary');
+    summary.innerHTML = '<div class="ms-title win">Tournament complete!</div>' +
+      entries.map((e, i) => '<div class="ms-line">' + (i + 1) + '. ' + e.name + ' — avg ' + (e.count ? fmt(e.avg) : 'no times submitted') + '</div>').join('');
+  }
+  document.getElementById('tourBackToLobbyBtn').addEventListener('click', () => {
+    stopTourPolling();
+    tourRoomCode = null;
+    document.getElementById('tournamentRoomView').style.display = 'none';
+    document.getElementById('tournamentJoinView').style.display = '';
+  });
+
+  function renderTourRoomState(room){
+    document.getElementById('tourRoomCodeLabel').textContent = room.code;
+    const isHost = room.hostId === tourPlayerId;
+    renderTourLobbyList(room);
+    document.getElementById('tourStartRoundBtn').style.display = (isHost && room.phase === 'lobby') ? '' : 'none';
+
+    const roundArea = document.getElementById('tourRoundArea');
+    const finalView = document.getElementById('tourFinalView');
+    if(room.phase === 'solving'){
+      roundArea.style.display = '';
+      finalView.style.display = 'none';
+      renderTourRoundArea(room, isHost);
+    } else if(room.phase === 'finished'){
+      roundArea.style.display = 'none';
+      finalView.style.display = '';
+      renderTourFinalSummary(room);
+    } else {
+      roundArea.style.display = 'none';
+      finalView.style.display = 'none';
+    }
+  }
+
+  function tourAreaActive(){
+    return !!tourRoomCode &&
+      document.getElementById('tournamentView').style.display !== 'none' &&
+      document.getElementById('tourRoundArea').style.display !== 'none' &&
+      !tourSubmittedThisRound;
+  }
+
+  function tourStartCharging(){
+    if(tourTimerPhase !== 'idle') return;
+    tourTimerPhase = 'charging';
+    const disp = document.getElementById('tourDisplay');
+    disp.classList.add('charging');
+    document.getElementById('tourHint').textContent = 'Keep holding...';
+    const segs = document.querySelectorAll('#tourChargeBar .seg');
+    const segColors = ['#f2f3f5','#f2793a','#3fae5a','#e0473a','#3468d1','#f5c518'];
+    const chargeStart = performance.now();
+    function step(now){
+      const elapsed = now - chargeStart;
+      const pct = Math.min(1, elapsed / 500);
+      const lit = Math.floor(pct * segs.length);
+      segs.forEach((s, i) => { s.style.background = i < lit ? segColors[i] : 'var(--surface-2)'; });
+      if(pct >= 1){
+        tourTimerPhase = 'armed';
+        disp.classList.remove('charging');
+        disp.classList.add('armed');
+        document.getElementById('tourHint').textContent = 'Release to go';
+        return;
+      }
+      tourChargeRaf = requestAnimationFrame(step);
+    }
+    tourChargeRaf = requestAnimationFrame(step);
+  }
+  function tourCancelCharging(){
+    if(tourChargeRaf) cancelAnimationFrame(tourChargeRaf);
+    tourChargeRaf = null;
+    resetTourSegs();
+    document.getElementById('tourDisplay').classList.remove('charging', 'armed');
+    if(tourTimerPhase === 'charging' || tourTimerPhase === 'armed'){
+      tourTimerPhase = 'idle';
+      document.getElementById('tourHint').textContent = 'Hold space (or press and hold here) to start';
+    }
+  }
+  function tourStartRun(){
+    tourTimerPhase = 'running';
+    const disp = document.getElementById('tourDisplay');
+    disp.classList.remove('armed');
+    disp.classList.add('running');
+    resetTourSegs();
+    document.getElementById('tourHint').textContent = 'Press space to stop';
+    tourRunStart = performance.now();
+    function tick(){
+      const elapsed = performance.now() - tourRunStart;
+      disp.textContent = fmt(elapsed);
+      tourRunRaf = requestAnimationFrame(tick);
+    }
+    tourRunRaf = requestAnimationFrame(tick);
+  }
+  async function tourStopRun(){
+    cancelAnimationFrame(tourRunRaf);
+    const elapsed = performance.now() - tourRunStart;
+    const disp = document.getElementById('tourDisplay');
+    disp.classList.remove('running');
+    disp.textContent = fmt(elapsed);
+    tourTimerPhase = 'idle';
+    document.getElementById('tourHint').textContent = 'Submitting...';
+    tourSubmittedThisRound = true;
+    try{
+      const room = await tourCall('submitTime', { ms: Math.round(elapsed) });
+      tourLastState = room;
+      renderTourRoomState(room);
+    }catch(err){ tourShowError(err.message); }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if(e.code !== 'Space') return;
+    if(!tourAreaActive()) return;
+    e.preventDefault();
+    if(e.repeat) return;
+    if(tourTimerPhase === 'running') tourStopRun();
+    else if(tourTimerPhase === 'idle') tourStartCharging();
+  });
+  document.addEventListener('keyup', (e) => {
+    if(e.code !== 'Space') return;
+    if(!tourAreaActive()) return;
+    e.preventDefault();
+    if(tourTimerPhase === 'armed') tourStartRun();
+    else if(tourTimerPhase === 'charging') tourCancelCharging();
+  });
+  document.getElementById('tourStage').addEventListener('touchstart', (e) => {
+    if(!tourAreaActive()) return;
+    e.preventDefault();
+    if(tourTimerPhase === 'running') tourStopRun();
+    else if(tourTimerPhase === 'idle') tourStartCharging();
+  }, { passive: false });
+  document.getElementById('tourStage').addEventListener('touchend', (e) => {
+    if(!tourAreaActive()) return;
+    e.preventDefault();
+    if(tourTimerPhase === 'armed') tourStartRun();
+    else if(tourTimerPhase === 'charging') tourCancelCharging();
+  }, { passive: false });
+
+  const tabTimerBtn = document.getElementById('tabTimerBtn');
+  const tabLearnBtn = document.getElementById('tabLearnBtn');
+  const tabSettingsBtn = document.getElementById('tabSettingsBtn');
+  const tabCompeteBtn = document.getElementById('tabCompeteBtn');
+  const tabCoursesBtn = document.getElementById('tabCoursesBtn');
+  const tabTournamentBtn = document.getElementById('tabTournamentBtn');
+  const timerView = document.getElementById('timerView');
+  const learnView = document.getElementById('learnView');
+  const settingsView = document.getElementById('settingsView');
+  const competeView = document.getElementById('competeView');
+  const coursesView = document.getElementById('coursesView');
+  const tournamentView = document.getElementById('tournamentView');
+  const allTabs = [
+    { btn: tabTimerBtn, view: timerView },
+    { btn: tabLearnBtn, view: learnView },
+    { btn: tabSettingsBtn, view: settingsView },
+    { btn: tabCompeteBtn, view: competeView },
+    { btn: tabCoursesBtn, view: coursesView },
+    { btn: tabTournamentBtn, view: tournamentView }
+  ];
+  function showTab(active){
+    allTabs.forEach(t => {
+      const isActive = t === active;
+      t.btn.classList.toggle('active', isActive);
+      t.view.style.display = isActive ? '' : 'none';
+    });
+    if(active.view !== coursesView && window.speechSynthesis){
+      window.speechSynthesis.cancel();
+    }
+  }
+  tabTimerBtn.addEventListener('click', () => showTab(allTabs[0]));
+  tabLearnBtn.addEventListener('click', () => {
+    showTab(allTabs[1]);
+    if(window.initCube3D) window.initCube3D();
+  });
+  tabSettingsBtn.addEventListener('click', () => showTab(allTabs[2]));
+  tabCompeteBtn.addEventListener('click', () => {
+    showTab(allTabs[3]);
+    populateBotPreview();
+    renderLeaderboard();
+  });
+  tabCoursesBtn.addEventListener('click', () => {
+    showTab(allTabs[4]);
+    renderCourseList();
+  });
+  tabTournamentBtn.addEventListener('click', () => showTab(allTabs[5]));
+})();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  const COLORS = {
+    U: 0xf2f3f5, D: 0xf5c518, F: 0x3fae5a, B: 0x3468d1, R: 0xe0473a, L: 0xf2793a,
+    inner: 0x14161c
+  };
+  const AXIS = { U:'y', D:'y', L:'x', R:'x', F:'z', B:'z' };
+  const LAYER = { U:1, D:-1, L:-1, R:1, F:1, B:-1 };
+  const SIGN = { U:-1, D:1, R:-1, L:1, F:-1, B:1 };
+
+  function createCubeEngine(container){
+    let scene, camera, renderer, cubeGroup, cubies = [];
+    let spherical = { radius: 9.5, theta: 0.7, phi: 1.0 };
+    let pinchDist = 0;
+
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+    function touchDist(touches){
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx*dx + dy*dy);
+    }
+
+    function updateCamera(){
+      const { radius, theta, phi } = spherical;
+      camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
+      camera.position.y = radius * Math.cos(phi);
+      camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
+      camera.lookAt(0, 0, 0);
+    }
+
+    function animate(){
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+
+    function build(){
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      const size = container.clientWidth || 340;
+      renderer.setSize(size, size);
+      container.innerHTML = '';
+      container.appendChild(renderer.domElement);
+
+      const light1 = new THREE.DirectionalLight(0xffffff, 0.9);
+      light1.position.set(4, 6, 5);
+      scene.add(light1);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+
+      cubeGroup = new THREE.Group();
+      scene.add(cubeGroup);
+
+      const spacing = 1.03;
+      const cubieSize = 0.97;
+      cubies = [];
+      for(let x = -1; x <= 1; x++){
+        for(let y = -1; y <= 1; y++){
+          for(let z = -1; z <= 1; z++){
+            const geo = new THREE.BoxGeometry(cubieSize, cubieSize, cubieSize);
+            const materials = [
+              new THREE.MeshLambertMaterial({ color: x === 1 ? COLORS.R : COLORS.inner }),
+              new THREE.MeshLambertMaterial({ color: x === -1 ? COLORS.L : COLORS.inner }),
+              new THREE.MeshLambertMaterial({ color: y === 1 ? COLORS.U : COLORS.inner }),
+              new THREE.MeshLambertMaterial({ color: y === -1 ? COLORS.D : COLORS.inner }),
+              new THREE.MeshLambertMaterial({ color: z === 1 ? COLORS.F : COLORS.inner }),
+              new THREE.MeshLambertMaterial({ color: z === -1 ? COLORS.B : COLORS.inner })
+            ];
+            const mesh = new THREE.Mesh(geo, materials);
+            mesh.position.set(x * spacing, y * spacing, z * spacing);
+            mesh.userData.grid = { x, y, z };
+            cubeGroup.add(mesh);
+            cubies.push(mesh);
+          }
+        }
+      }
+      updateCamera();
+      animate();
+    }
+
+    function attachDrag(){
+      let dragging = false, lastX = 0, lastY = 0;
+      function down(x, y){ dragging = true; lastX = x; lastY = y; }
+      function move(x, y){
+        if(!dragging) return;
+        const dx = x - lastX, dy = y - lastY;
+        spherical.theta -= dx * 0.008;
+        spherical.phi -= dy * 0.008;
+        spherical.phi = Math.max(0.3, Math.min(Math.PI - 0.3, spherical.phi));
+        lastX = x; lastY = y;
+        updateCamera();
+      }
+      function up(){ dragging = false; }
+      container.addEventListener('mousedown', e => down(e.clientX, e.clientY));
+      window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+      window.addEventListener('mouseup', up);
+      container.addEventListener('touchstart', e => {
+        if(e.touches.length === 2){
+          dragging = false;
+          pinchDist = touchDist(e.touches);
+        } else {
+          const t = e.touches[0]; down(t.clientX, t.clientY);
+        }
+      }, { passive: true });
+      container.addEventListener('touchmove', e => {
+        if(e.touches.length === 2){
+          const d = touchDist(e.touches);
+          const delta = pinchDist - d;
+          pinchDist = d;
+          spherical.radius = clamp(spherical.radius + delta * 0.03, 5.5, 16);
+          updateCamera();
+        } else {
+          const t = e.touches[0]; move(t.clientX, t.clientY);
+        }
+      }, { passive: true });
+      container.addEventListener('touchend', up);
+      container.addEventListener('wheel', e => {
+        e.preventDefault();
+        spherical.radius = clamp(spherical.radius + e.deltaY * 0.01, 5.5, 16);
+        updateCamera();
+      }, { passive: false });
+    }
+
+    function rotateVectorStep(axis, steps, grid){
+      let { x, y, z } = grid;
+      for(let i = 0; i < ((steps % 4) + 4) % 4; i++){
+        if(axis === 'x'){ const ny = -z, nz = y; y = ny; z = nz; }
+        else if(axis === 'y'){ const nx = z, nz = -x; x = nx; z = nz; }
+        else { const nx = -y, ny = x; x = nx; y = ny; }
+      }
+      return { x, y, z };
+    }
+
+    function performMove(moveStr, duration){
+      duration = duration || 220;
+      return new Promise((resolve) => {
+        const face = moveStr[0];
+        const mod = moveStr.slice(1);
+        const axis = AXIS[face];
+        const layerVal = LAYER[face];
+        const turns = mod === "'" ? -1 : mod === '2' ? 2 : 1;
+        const sign = SIGN[face];
+        const targetAngle = sign * turns * (Math.PI / 2);
+        const steps = ((sign * turns) % 4 + 4) % 4;
+
+        const affected = cubies.filter(c => c.userData.grid[axis] === layerVal);
+        const pivot = new THREE.Group();
+        scene.add(pivot);
+        affected.forEach(c => pivot.attach(c));
+
+        const start = performance.now();
+        function step(now){
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 2);
+          pivot.rotation[axis] = targetAngle * eased;
+          if(t < 1){
+            requestAnimationFrame(step);
+          } else {
+            pivot.rotation[axis] = targetAngle;
+            pivot.updateMatrixWorld(true);
+            affected.forEach(c => {
+              cubeGroup.attach(c);
+              c.userData.grid = rotateVectorStep(axis, steps, c.userData.grid);
+              c.position.set(c.userData.grid.x * 1.03, c.userData.grid.y * 1.03, c.userData.grid.z * 1.03);
+            });
+            scene.remove(pivot);
+            resolve();
+          }
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    function invertAlg(moves){
+      return moves.slice().reverse().map(m => {
+        const face = m[0], mod = m.slice(1);
+        if(mod === '2') return m;
+        if(mod === "'") return face;
+        return face + "'";
+      });
+    }
+
+    function resetCube(){
+      cubies.forEach(c => { if(c.parent !== cubeGroup) cubeGroup.attach(c); });
+      let idx = 0;
+      for(let x = -1; x <= 1; x++)
+        for(let y = -1; y <= 1; y++)
+          for(let z = -1; z <= 1; z++){
+            cubies[idx].userData.grid = { x, y, z };
+            cubies[idx].position.set(x * 1.03, y * 1.03, z * 1.03);
+            cubies[idx].rotation.set(0, 0, 0);
+            idx++;
+          }
+    }
+
+    async function playSequence(moves, speedMs){
+      for(const m of moves){
+        await performMove(m, speedMs);
+      }
+    }
+
+    build();
+    attachDrag();
+
+    return { performMove, resetCube, playSequence, invertAlg };
+  }
+
+  const ALGS = [
+    { cat: 'Building blocks', name: 'Sexy move', notation: ['R','U',"R'","U'"], desc: 'The most common fragment in speedcubing — used constantly in F2L and OLL.' },
+    { cat: 'Building blocks', name: 'Sledgehammer', notation: ["R'","F","R","F'"], desc: 'Another core insertion tool, common in F2L and last-layer algorithms.' },
+    { cat: 'OLL (orient last layer)', name: 'Sune', notation: ['R','U',"R'",'U','R','U2',"R'"], desc: 'Orients corners when one corner is already correct.' },
+    { cat: 'OLL (orient last layer)', name: 'Anti-Sune', notation: ['R','U2',"R'","U'",'R',"U'","R'"], desc: 'Mirror case of Sune — corners twisted the other way.' },
+    { cat: 'PLL (permute last layer)', name: 'T-Perm', notation: ['R','U',"R'","U'","R'",'F','R2',"U'","R'","U'",'R','U',"R'",'F'], desc: 'Swaps two adjacent corners and two adjacent edges.' }
+  ];
+
+  let learnEngine = null;
+  let learnAnimating = false;
+
+  function renderAlgLibrary(){
+    const container = document.getElementById('algLibrary');
+    if(container.dataset.built) return;
+    container.dataset.built = '1';
+    const cats = [];
+    ALGS.forEach(a => { if(!cats.includes(a.cat)) cats.push(a.cat); });
+    cats.forEach(cat => {
+      const h = document.createElement('div');
+      h.className = 'alg-category';
+      h.textContent = cat;
+      container.appendChild(h);
+      ALGS.filter(a => a.cat === cat).forEach(a => {
+        const card = document.createElement('div');
+        card.className = 'alg-card';
+        card.innerHTML =
+          '<div class="alg-card-info">' +
+            '<div class="alg-name">' + a.name + '</div>' +
+            '<div class="alg-notation">' + a.notation.join(' ') + '</div>' +
+            '<div class="alg-desc">' + a.desc + '</div>' +
+          '</div>' +
+          '<button class="alg-play-btn">Play</button>';
+        const btn = card.querySelector('.alg-play-btn');
+        btn.addEventListener('click', async () => {
+          if(learnAnimating) return;
+          learnAnimating = true;
+          btn.disabled = true;
+          const banner = document.getElementById('playingBanner');
+          banner.style.display = 'block';
+          learnEngine.resetCube();
+          banner.textContent = 'Setting up the case…';
+          const setup = learnEngine.invertAlg(a.notation);
+          await learnEngine.playSequence(setup, 120);
+          await new Promise(r => setTimeout(r, 500));
+          banner.textContent = a.name + ':  ' + a.notation.join(' ');
+          await learnEngine.playSequence(a.notation, 500);
+          banner.textContent = a.name + ' — solved. Try it yourself with the move buttons.';
+          learnAnimating = false;
+          btn.disabled = false;
+        });
+        container.appendChild(card);
+      });
+    });
+  }
+
+  function buildMoveGrid(){
+    const grid = document.getElementById('moveGrid');
+    if(grid.dataset.built) return;
+    grid.dataset.built = '1';
+    ['U',"U'",'U2','D',"D'",'D2','L',"L'",'L2','R',"R'",'R2','F',"F'",'F2','B',"B'",'B2'].forEach(m => {
+      const btn = document.createElement('button');
+      btn.textContent = m;
+      btn.addEventListener('click', () => {
+        if(learnAnimating) return;
+        learnAnimating = true;
+        learnEngine.performMove(m).then(() => { learnAnimating = false; });
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  window.initCube3D = function(){
+    if(learnEngine) return;
+    const container = document.getElementById('cube3dCanvas');
+    learnEngine = createCubeEngine(container);
+    buildMoveGrid();
+    renderAlgLibrary();
+    document.getElementById('cubeResetBtn').addEventListener('click', () => {
+      if(learnAnimating) return;
+      learnEngine.resetCube();
+      document.getElementById('playingBanner').style.display = 'none';
+    });
+    document.getElementById('cubeScrambleBtn').addEventListener('click', async () => {
+      if(learnAnimating) return;
+      learnAnimating = true;
+      learnEngine.resetCube();
+      document.getElementById('playingBanner').style.display = 'none';
+      const faces = ['U','D','L','R','F','B'];
+      const mods = ['', "'", '2'];
+      const seq = [];
+      let last = null;
+      for(let i = 0; i < 18; i++){
+        let f;
+        do { f = faces[Math.floor(Math.random()*faces.length)]; } while(f === last);
+        last = f;
+        seq.push(f + mods[Math.floor(Math.random()*mods.length)]);
+      }
+      await learnEngine.playSequence(seq, 140);
+      learnAnimating = false;
+    });
+  };
+
+  window.createCubeEngine = createCubeEngine;
+})();
+</script>
+</body>
+</html>
