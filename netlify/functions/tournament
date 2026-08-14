@@ -6,8 +6,6 @@
 // No environment variables needed - Netlify Blobs works automatically on any
 // site that's connected through GitHub (not plain Netlify Drop, which can't run Functions at all).
 
-const { getStore } = require('@netlify/blobs');
-
 function json(obj, status) {
   return {
     statusCode: status || 200,
@@ -24,6 +22,13 @@ function randomCode() {
 }
 
 exports.handler = async function (event) {
+  let getStore;
+  try {
+    getStore = require('@netlify/blobs').getStore;
+  } catch (err) {
+    return json({ error: 'Could not load @netlify/blobs package: ' + err.message + '. Make sure package.json (with @netlify/blobs listed as a dependency) is at your repo root and redeploy.' }, 500);
+  }
+
   if (event.httpMethod !== 'POST') {
     return json({ error: 'Method not allowed' }, 405);
   }
